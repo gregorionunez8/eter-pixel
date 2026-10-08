@@ -16,3 +16,5 @@ Errores corregidos: tests iniciales de AoE/muerte ignoraban precisión y fallos;
 Limitaciones actuales: destino ajustado al centro de tile; arte procedural reconocible pero provisional, fuente del motor; salida aún sin cambio de mapa. El equipo es apariencia inicial, no inventario/equipamiento intercambiable aún. Proyectiles son efectos visuales; daño se resuelve al lanzar. Efigies no son todavía las seis especies con IA. No hay progresión por experiencia, inventario, economía, persistencia ni red. Autoridad actual es local; autoridad servidor pendiente.
 Decisiones: renderer Compatibility, resolución interna 640x360 y recursos originales procedurales locales.
 Próxima tarea: seis especies originales y máquina de estados con navegación/colisiones, detección, persecución, ataque, regreso, muerte y respawn; después progresión e inventario. No saltar al backend hasta integrar los sistemas locales en orden.
+
+Hitos Git estables: 81c59f1 fundaciones; cc31582 movimiento/aldea; 4aaf987 personajes; 327e859 combate/input. Verificación integrada `./tools/test.ps1 -Graphics` exit 0. Objetivo completo sigue activo: aún faltan criterios críticos de MMORPG.

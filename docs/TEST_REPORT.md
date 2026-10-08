@@ -19,3 +19,5 @@ Ejecución gráfica real: `tools/invoke-godot.ps1` con --capture-menu y --captur
 Render real `--capture-combat`: exit 0 y PASS, captura artifacts/combat.png inspeccionada (nova, números, objetivos, maná y cooldowns). Prueba input_runtime: primero falló por consultar posición del cursor en vez del evento; se corrigió el cliente para transformar event.position. Reejecución pasa `PASS input runtime: 9 checks`, exit 0, OpenGL real, ventana reportó 2560x1440 y render interno 640x360. Comprueba eventos inyectados al viewport, routing GUI y gameplay; no acredita clics físicos del SO. Captura artifacts/input-runtime.png revisada.
 
 Comando estándar headless: `./tools/test.ps1`. Para agregar renderer real e input: `./tools/test.ps1 -Graphics`. Sin pruebas de servidor, SQL o dos clientes aún.
+
+Verificación integrada final de este hito: `./tools/test.ps1 -Graphics`, exit 0; importación/smoke, movimiento 544, personajes 33, combate 209 e input gráfico 9 pasan en una ejecución. Logs artifacts/import, smoke, movement, characters, combat e input-runtime. Los conteos incluyen verificaciones por frame de física; no representan 795 escenarios distintos.
