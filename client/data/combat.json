@@ -1,0 +1,28 @@
+{
+  "critical_chance": 0.1,
+  "critical_multiplier": 1.8,
+  "min_hit_chance": 0.45,
+  "max_hit_chance": 0.98,
+  "magic_defense_factor": 0.6,
+  "physical_defense_factor": 1,
+  "player_respawn_seconds": 4,
+  "target_respawn_seconds": 5,
+  "regeneration_delay": 4,
+  "regeneration_interval": 1,
+  "hp_regeneration_fraction": 0.02,
+  "mana_regeneration_fraction": 0.04,
+  "training_target": {"hp": 110, "stats": {"max_hp": 110, "attack": 18, "defense": 4, "accuracy": 82, "evasion": 3}, "retaliation_range": 44, "retaliation_interval": 1.2},
+  "classes": {
+    "warrior": {"auto_range": 44, "auto_interval": 0.75, "skills": ["power_strike", "whirlwind"]},
+    "mage": {"auto_range": 120, "auto_interval": 1, "skills": ["fireball", "nova"]},
+    "elf": {"auto_range": 144, "auto_interval": 0.8, "skills": ["multishot", "heal"]}
+  },
+  "skills": {
+    "power_strike": {"name": "Golpe poderoso", "range": 52, "multiplier": 1.8, "mana": 8, "cooldown": 3, "mode": "single", "effect": "slash", "damage_type": "physical"},
+    "whirlwind": {"name": "Ataque giratorio", "range": 80, "multiplier": 1.3, "mana": 14, "cooldown": 6, "mode": "area", "effect": "spin", "damage_type": "physical"},
+    "fireball": {"name": "Bola de fuego", "range": 176, "multiplier": 1.7, "mana": 10, "cooldown": 2, "mode": "single", "effect": "fire", "damage_type": "magic"},
+    "nova": {"name": "Nova mágica", "range": 112, "multiplier": 1.5, "mana": 22, "cooldown": 7, "mode": "area", "effect": "nova", "damage_type": "magic"},
+    "multishot": {"name": "Flecha múltiple", "range": 192, "multiplier": 1.3, "mana": 12, "cooldown": 4, "mode": "multiple", "max_targets": 3, "effect": "arrow", "damage_type": "physical"},
+    "heal": {"name": "Curación", "range": 0, "heal_fraction": 0.3, "mana": 16, "cooldown": 6, "mode": "heal", "effect": "heal"}
+  }
+}

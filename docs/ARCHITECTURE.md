@@ -10,4 +10,8 @@ Backend previsto: tick fijo autoritativo, comandos validados, snapshots WebSocke
 
 Personajes: shared/classes.json contiene atributos y coeficientes; sync-data.mjs copia sólo el recurso empaquetado al cliente. EterCharacter valida nombres/clases, crea estado independiente y calcula estadísticas. App retiene el personaje activo en memoria. El backend deberá reutilizar los datos y comprobar equivalencia de fórmulas; aún no existe guardado de personaje ni autenticación.
 
+Combate local: EterCombat recibe comandos de selección/cast y procesa temporizadores, validación y efectos. EterCombatRules resuelve impactos con rolls explícitos, coeficientes shared/combat.json. Targets de entrenamiento exponen estado y representación, el controlador aplica daño/respawn. Señal hit_resolved entrega evidencia del impacto; state_changed actualiza HUD. Cada habilidad valida clase, maná, cooldown, rango, vivo y línea de visión antes de consumir recursos. El servidor sustituirá esta autoridad local; no aceptar estos resultados del cliente online.
+
+Input: coordenadas de InputEvent transformadas con get_global_transform_with_canvas().affine_inverse(), almacenadas para destino continuo. GUI recibe primero eventos y sólo gameplay no consumido llega a _unhandled_input. Pruebas gráficas usan Viewport.push_input con coordenadas locales y proceso real. Referencia: https://docs.godotengine.org/en/stable/classes/class_viewport.html
+
 Referencia de escalado: https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html

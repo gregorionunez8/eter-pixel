@@ -10,6 +10,7 @@ var animation_time := 0.0
 var facing := 2
 var frame := 0
 var camera := Camera2D.new()
+var dead := false
 
 func _ready() -> void:
 	collision_layer = 2
@@ -38,6 +39,8 @@ func _ready() -> void:
 func move_to(point: Vector2) -> void:
 	if not navigation:
 		return
+	if dead:
+		return
 	if not path.is_empty() and navigation.cell_at(point) == navigation.cell_at(destination):
 		return
 	var next_path := navigation.find_path(global_position, point)
@@ -49,6 +52,8 @@ func move_to(point: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	velocity = Vector2.ZERO
+	if dead:
+		return
 	if not path.is_empty():
 		var offset := path[0] - global_position
 		if offset.length() < 1:

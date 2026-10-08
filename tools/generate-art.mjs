@@ -46,4 +46,6 @@ for(let d=0;d<8;d++)for(let f=0;f<4;f++){
  if(characterClass==='mage'){actor.rect(x-7,y+32+b,14,7,P.ink);actor.rect(x-6,y+32+b,12,5,armor);actor.rect(x-4,y+33+b,2,4,armorLight);actor.line(x+11,y+10+b,x+11,y+38+b,P.copper);actor.ellipse(x+11,y+9+b,3,3,P.ink);actor.ellipse(x+11,y+9+b,2,2,P.ether);actor.rect(x-5,y+6+b,10,4,armor);}
  if(characterClass==='elf'){actor.rect(x-7,y+6+b,3,11,P.gold);actor.rect(x+5,y+6+b,3,11,P.gold);actor.ellipse(x+10,y+23+b,4,11,P.copper);actor.ellipse(x+10,y+23+b,2,9,P.ink,0);actor.line(x+10,y+12+b,x+10,y+34+b,P.gold);}
 }actor.save(characterClass);if(characterClass==='warrior')actor.save('traveler');
-}console.log('Generated 11 original PNG assets, including three class sprite sheets');
+}
+const dummy=new Canvas(48,64);dummy.ellipse(24,56,18,5,P.ink,110);dummy.rect(20,22,8,34,P.ink);dummy.rect(22,23,4,31,P.copper);dummy.rect(5,26,38,8,P.ink);dummy.rect(7,28,34,4,P.wood);dummy.ellipse(24,18,9,10,P.ink);dummy.ellipse(24,18,7,8,P.gold);dummy.rect(18,15,3,2,P.ink);dummy.rect(27,15,3,2,P.ink);dummy.rect(23,20,2,3,P.copper);dummy.rect(15,25,18,20,P.ink);dummy.rect(17,27,14,16,'#927e50');dummy.rect(18,31,12,2,P.wood);dummy.rect(23,27,2,16,P.copper);dummy.save('training');
+console.log('Generated 12 original PNG assets, including three class sheets and training effigy');

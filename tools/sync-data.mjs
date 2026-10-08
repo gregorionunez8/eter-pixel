@@ -2,5 +2,5 @@ import {mkdirSync,copyFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 mkdirSync(root+'client/data',{recursive:true});
-copyFileSync(root+'shared/classes.json',root+'client/data/classes.json');
-console.log('Synced shared class data to Godot');
+for(const name of ['classes','combat'])copyFileSync(root+'shared/'+name+'.json',root+'client/data/'+name+'.json');
+console.log('Synced shared game data to Godot');

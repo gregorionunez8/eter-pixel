@@ -11,8 +11,16 @@ var entities := Node2D.new()
 var marker := Vector2(-100, -100)
 var held := false
 var mouse_tick := 0.0
+var pointer_position := Vector2.ZERO
 var hud: CanvasLayer
 var pause_menu: PanelContainer
+var combat := EterCombat.new()
+var targets: Array[EterTrainingTarget] = []
+var spawn_position := Vector2(24 * TILE + 16, 18 * TILE + 16)
+var resource_label := Label.new()
+var message_label := Label.new()
+var message_left := 0.0
+var skill_buttons: Array[Button] = []
 
 func _ready() -> void:
 	terrain = load("res://assets/terrain.png")
@@ -33,12 +41,21 @@ func _ready() -> void:
 	navigation.setup(SIZE, blocked)
 	player = EterPlayer.new()
 	player.navigation = navigation
-	player.position = Vector2(24 * TILE + 16, 18 * TILE + 16)
+	player.position = spawn_position
 	entities.add_child(player)
 	player.camera.limit_left = 0
 	player.camera.limit_top = 0
 	player.camera.limit_right = SIZE.x * TILE
 	player.camera.limit_bottom = SIZE.y * TILE
+	for x in [22, 24, 26]:
+		var target := EterTrainingTarget.new()
+		target.position = Vector2(x * TILE + 16, 27 * TILE + 16)
+		entities.add_child(target)
+		targets.append(target)
+	combat.setup(self, player, targets)
+	add_child(combat)
+	combat.state_changed.connect(update_resources)
+	combat.feedback.connect(func(message: String): message_label.text = message; message_left = 2.5)
 	build_hud()
 	var ambient := CanvasModulate.new()
 	ambient.color = Color(0.83, 0.89, 0.96)
@@ -86,12 +103,33 @@ func build_hud() -> void:
 	location.modulate = Color("d5aa64")
 	location.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(location)
+	resource_label.position = Vector2(16, 29)
+	resource_label.add_theme_font_size_override("font_size", 11)
+	resource_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(resource_label)
+	update_resources()
 	var help := Label.new()
-	help.text = "Clic: caminar · Mantener: cambiar destino · Esc: menú"
-	help.position = Vector2(14, 336)
+	help.text = "Clic: caminar/atacar · 1/2: habilidades · Esc: menú"
+	help.position = Vector2(14, 310)
 	help.add_theme_font_size_override("font_size", 11)
 	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(help)
+	message_label.position = Vector2(306, 337)
+	message_label.add_theme_font_size_override("font_size", 10)
+	message_label.modulate = Color("d5aa64")
+	message_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(message_label)
+	var skills: Array = EterCombatRules.definitions().classes[App.class_id].skills
+	for index in range(skills.size()):
+		var button := Button.new()
+		button.position = Vector2(14 + index * 144, 332)
+		button.size = Vector2(140, 24)
+		button.add_theme_font_size_override("font_size", 10)
+		button.add_theme_color_override("font_disabled_color", Color("b4aca0"))
+		var skill_id: String = skills[index]
+		button.pressed.connect(func(): held = false; combat.cast(skill_id))
+		hud.add_child(button)
+		skill_buttons.append(button)
 	pause_menu = PanelContainer.new()
 	pause_menu.position = Vector2(220, 112)
 	pause_menu.size = Vector2(200, 120)
@@ -112,6 +150,8 @@ func build_hud() -> void:
 	box.add_child(leave)
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		pointer_position = event.position
 	# Release still applies if a UI control consumes the mouse event.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 		held = false
@@ -123,10 +163,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if pause_menu.visible:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_1, KEY_2]:
+		var index := 0 if event.keycode == KEY_1 else 1
+		combat.cast(EterCombatRules.definitions().classes[App.class_id].skills[index])
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		pointer_position = event.position
 		held = event.pressed
 		if held:
-			set_destination(get_global_mouse_position())
+			handle_primary(get_global_transform_with_canvas().affine_inverse() * pointer_position)
+
+func handle_primary(point: Vector2) -> void:
+	if player.dead:
+		return
+	for target in targets:
+		if not target.dead and point.distance_to(target.position + Vector2(0,-16)) < 24:
+			combat.select_target(target)
+			return
+	combat.select_target(null)
+	set_destination(point)
 
 func set_destination(point: Vector2) -> void:
 	player.move_to(point)
@@ -134,10 +188,22 @@ func set_destination(point: Vector2) -> void:
 	queue_redraw()
 
 func _process(delta: float) -> void:
+	message_left -= delta
+	if message_left <= 0:
+		message_label.text = ""
+	var skills: Array = EterCombatRules.definitions().classes[App.class_id].skills
+	for index in range(skill_buttons.size()):
+		var skill: Dictionary = EterCombatRules.definitions().skills[skills[index]]
+		var cooldown := float(combat.cooldowns.get(skills[index], 0))
+		skill_buttons[index].text = "%s %s%s" % [index + 1, skill.name, " · %ss" % ceili(cooldown) if cooldown > 0 else ""]
+		skill_buttons[index].disabled = player.dead or cooldown > 0 or App.character.mana < skill.mana
 	mouse_tick += delta
 	if held and not pause_menu.visible and mouse_tick > 0.12:
 		mouse_tick = 0
-		set_destination(get_global_mouse_position())
+		handle_primary(get_global_transform_with_canvas().affine_inverse() * pointer_position)
+
+func update_resources() -> void:
+	resource_label.text = "%s · Nv %s · Vida %s/%s · Maná %s/%s" % [EterCharacter.definitions().classes[App.class_id].name, App.character.level, App.character.hp, App.character.stats.max_hp, App.character.mana, App.character.stats.max_mana]
 
 func is_safe(point: Vector2, radius: float = 6.5) -> bool:
 	for rect in solid_rectangles:

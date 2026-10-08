@@ -1,6 +1,6 @@
 # Progreso
 
-Fase actual: personajes verificados; combate siguiente.
+Fase actual: combate local verificado; monstruos e IA siguientes.
 
 Repositorio inicialmente vacío. Entorno: Windows, Godot 4.7.2 estable, Node 24.19.0, npm 11.17.0 y Git. Docker y psql no detectados en PATH. Sin instalaciones globales.
 
@@ -10,6 +10,9 @@ Errores corregidos: wrapper console instalado apunta a un ejecutable ausente; se
 Errores corregidos de movimiento: recálculo repetido del mismo destino podía regresar al centro de la celda; se conserva ruta al mismo destino. Soltar sobre UI cancela clic sostenido. Se acercaron edificios a la plaza tras revisar captura.
 Personajes terminados: creación con nombre validado y selección Guerrero/Mago/Elfa, cuatro atributos, siete estadísticas derivadas por datos, nivel/experiencia/puntos iniciales, animación en ocho direcciones y equipo inicial visual distinto. Datos compartidos en shared/classes.json, sincronizados al cliente por tools/sync-data.mjs; fórmulas centralizadas en EterCharacter.
 Pruebas de personajes: 33 comprobaciones, nombres válidos/inválidos, rechazo de clase desconocida, cálculos de referencia, aislamiento de datos, formulario y creación/movimiento real de las tres clases. Capturas gráficas de las tres pantallas inspeccionadas sin recortes.
-Limitaciones actuales: destino ajustado al centro de tile; arte procedural reconocible pero provisional, fuente del motor; salida aún sin cambio de mapa. El equipo es apariencia inicial, no inventario/equipamiento intercambiable aún. No hay combate, economía, persistencia ni red implementados.
+Combate terminado en modo local: selección/persecución por mouse, autoataque con intervalo/rango por clase, daño físico/mágico, defensa, precisión, críticos, muerte/respawn y regeneración. Seis habilidades funcionales con costo/cooldown/rango/línea de visión: Golpe poderoso, Ataque giratorio, Bola de fuego, Nova mágica, Flecha múltiple y Curación. Tres efigies junto a salida sur reciben daño, responden a corta distancia, mueren y reaparecen. Proyectiles visuales, ondas/partículas, números, barras de objetivo y recursos/cooldowns en HUD.
+Pruebas de combate: 209 checks, incluyendo todas las habilidades, rechazos sin costo, AoE/múltiples objetivos, fallos, críticos, defensa, regeneración, persecución y 480 frames reales con muerte/respawn de jugador/objetivo. Suite completa pasa. Prueba adicional gráfica de input pasa 9 checks de Jugar/crear/caminar/seleccionar/atajo/Esc/continuar/captura con eventos mouse/teclado enviados al viewport real; no es automatización del escritorio de Windows.
+Errores corregidos: tests iniciales de AoE/muerte ignoraban precisión y fallos; ahora inspeccionan cada resultado de impacto y las muertes requieren impacto real. Input gráfico detectó discrepancia entre cursor consultado y evento; world usa coordenadas del evento transformadas, también para clic sostenido.
+Limitaciones actuales: destino ajustado al centro de tile; arte procedural reconocible pero provisional, fuente del motor; salida aún sin cambio de mapa. El equipo es apariencia inicial, no inventario/equipamiento intercambiable aún. Proyectiles son efectos visuales; daño se resuelve al lanzar. Efigies no son todavía las seis especies con IA. No hay progresión por experiencia, inventario, economía, persistencia ni red. Autoridad actual es local; autoridad servidor pendiente.
 Decisiones: renderer Compatibility, resolución interna 640x360 y recursos originales procedurales locales.
-Próxima tarea: combate en tiempo real y habilidades por clase; usar primero objetivo de entrenamiento comprobable, después seis especies e IA. No declarar implementado lo que sólo figura en datos de diseño.
+Próxima tarea: seis especies originales y máquina de estados con navegación/colisiones, detección, persecución, ataque, regreso, muerte y respawn; después progresión e inventario. No saltar al backend hasta integrar los sistemas locales en orden.

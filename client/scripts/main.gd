@@ -7,6 +7,20 @@ var creation: Control
 
 func _ready() -> void:
 	show_menu()
+	if "--capture-combat" in OS.get_cmdline_user_args():
+		enter_world("Bruma", "mage")
+		world.combat.random.seed = 1909
+		world.player.position = world.targets[1].position + Vector2(0,-64)
+		await get_tree().physics_frame
+		world.combat.select_target(world.targets[1])
+		world.combat.cast("nova")
+		world.combat.cast("fireball")
+		await get_tree().create_timer(0.15).timeout
+		await RenderingServer.frame_post_draw
+		var result: int = get_viewport().get_texture().get_image().save_png("res://../artifacts/combat.png")
+		assert(result == OK)
+		print("PASS rendered combat capture")
+		get_tree().quit()
 	if "--capture-classes" in OS.get_cmdline_user_args():
 		start_game()
 		for index in range(3):
