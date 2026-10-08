@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "definitions": {
+    "silk_on_the_road": {
+      "name": "Seda en el camino",
+      "npc": "shop",
+      "map_id": "village",
+      "requires": null,
+      "dialogue": "Las arañas cercan nuestra salida. Abate tres y vuelve: prepararé provisiones para tu viaje.",
+      "completed_dialogue": "El camino respira otra vez. Lleva estas provisiones; el Bosque aún guarda peligros.",
+      "objective": {"species": "spider", "count": 3, "maps": ["village", "forest"]},
+      "reward": {"experience": 60, "gold": 40, "items": [{"definition": "potion", "count": 3, "rarity": "normal"}]}
+    },
+    "fangs_in_the_mist": {
+      "name": "Colmillos en la niebla",
+      "npc": "smith",
+      "map_id": "village",
+      "requires": "silk_on_the_road",
+      "dialogue": "Los lobos acechan el Bosque de las Sombras. Abate dos allí. Forjaré unas botas para tu marcha.",
+      "completed_dialogue": "Has protegido a quienes cruzan el Bosque. Ahora escucha: una presencia antigua despierta en la Cripta.",
+      "objective": {"species": "wolf", "count": 2, "maps": ["forest"]},
+      "reward": {"experience": 120, "gold": 70, "items": [{"definition": "boots", "count": 1, "rarity": "magic"}]}
+    },
+    "oath_beneath_the_stone": {
+      "name": "Juramento bajo la piedra",
+      "npc": "smith",
+      "map_id": "village",
+      "requires": "fangs_in_the_mist",
+      "dialogue": "El Guardián oscuro de la Cripta conserva un juramento roto. Derrótalo y vuelve para sellar su recuerdo.",
+      "completed_dialogue": "El juramento descansa. Guarda este anillo: Éter recuerda a quienes regresan de la oscuridad.",
+      "objective": {"species": "guardian", "count": 1, "maps": ["crypt"]},
+      "reward": {"experience": 220, "gold": 120, "items": [{"definition": "ring", "count": 1, "rarity": "excellent"}]}
+    }
+  }
+}
