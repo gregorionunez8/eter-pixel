@@ -13,6 +13,14 @@ func _ready() -> void:
 		assert(result == OK)
 		print("PASS rendered menu capture")
 		get_tree().quit()
+	if "--capture-world" in OS.get_cmdline_user_args():
+		start_game()
+		await get_tree().create_timer(0.5).timeout
+		await RenderingServer.frame_post_draw
+		var result := get_viewport().get_texture().get_image().save_png("res://../artifacts/world.png")
+		assert(result == OK)
+		print("PASS rendered world capture")
+		get_tree().quit()
 	if "--smoke" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
 		assert(menu.has_node("Panel/Buttons/Play"))

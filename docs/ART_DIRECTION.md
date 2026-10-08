@@ -9,3 +9,5 @@ Tiles 32x32; personajes 32x48; props anclados al suelo y ordenados por Y. Base 6
 Se evaluó ImageGen disponible. Para la primera iteración se elige generación procedural determinista de sprites raster originales: permite mantener paleta, escala, bordes y reproducibilidad exactas. No se emplean recursos remotos ni de terceros. No es aún arte comercial final.
 
 Licencias: código y arte creados en este repositorio para ÉTER; sin dependencias gráficas externas. La fuente predeterminada del motor es provisional.
+
+Recursos presentes: assets/terrain.png (atlas 32x32), traveler.png (32 frames 32x48, 8 direcciones), tree.png, house.png, shop.png, smith.png, shrine.png y wall.png. Generador local tools/generate-art.mjs, determinista y sin dependencias npm. Sombras raster transparentes, edificios con tejados y mampostería; no bloques planos como escenario final.
