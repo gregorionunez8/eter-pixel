@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { classes, items, type Character } from "./rules.js";
+import { classes, deriveStats as derive, type Character } from "./rules.js";
+export { deriveStats as derive } from "./rules.js";
 import { Rejected } from "./store.js";
 export const combatRules = JSON.parse(
   readFileSync(resolve("../shared/combat.json"), "utf8"),
@@ -11,41 +12,6 @@ export const progressionRules = JSON.parse(
 export const species = JSON.parse(
   readFileSync(resolve("../shared/monsters.json"), "utf8"),
 ).species;
-export function derive(state: Character) {
-  const definition = classes.classes[state.class_id];
-  const formula = (coefficients: Record<string, number>) =>
-    Math.max(
-      0,
-      Math.floor(
-        (coefficients.base ?? 0) +
-          (state.level - 1) * (coefficients.level ?? 0) +
-          classes.attributes.reduce(
-            (sum: number, key: string) =>
-              sum + state.attributes[key] * (coefficients[key] ?? 0),
-            0,
-          ),
-      ),
-    );
-  const stats: Record<string, number | string> = {
-    attack: formula(definition.attack),
-    damage_type: definition.damage_type,
-    speed: definition.speed,
-  };
-  for (const [key, value] of Object.entries(classes.derived))
-    stats[key] = formula(value as Record<string, number>);
-  for (const uid of Object.values(state.inventory.equipment)) {
-    const item = state.inventory.items.find((item) => item.uid === uid);
-    if (!item || item.durability <= 0) continue;
-    for (const [stat, bonus] of Object.entries(
-      items.definitions[item.definition].bonuses,
-    ))
-      stats[stat] =
-        Number(stats[stat] ?? 0) +
-        Math.floor(Number(bonus) * items.rarities[item.rarity].multiplier) +
-        item.upgrade * items.upgrade.stat_per_level;
-  }
-  return stats;
-}
 export function requiredExperience(level: number) {
   return Math.max(
     1,

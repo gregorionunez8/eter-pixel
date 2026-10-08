@@ -32,8 +32,21 @@ function fields(data: Record<string, unknown>, keys: string[]) {
 export async function startService(
   store: Store,
   port: number,
-  options: { heartbeatMs?: number; random?: () => number } = {},
+  options: {
+    heartbeatMs?: number;
+    random?: () => number;
+    lootRandom?: () => number;
+    persistenceKey?: string;
+    checkpointMs?: number;
+  } = {},
 ) {
+  const pending = new Set<Promise<void>>();
+  const connections = new Set<Promise<void>>();
+  const world = new AuthoritativeWorld(options.random, options.lootRandom);
+  const persistenceKey = options.persistenceKey ?? "village";
+  const savedWorld = await store.loadWorld(persistenceKey);
+  let worldRevision = savedWorld?.revision ?? 0;
+  if (savedWorld) world.economy.restore(savedWorld.ground);
   const server = new WebSocketServer({
     host: "127.0.0.1",
     port,
@@ -41,9 +54,80 @@ export async function startService(
     perMessageDeflate: false,
   });
   await once(server, "listening");
-  const pending = new Set<Promise<void>>();
-  const connections = new Set<Promise<void>>();
-  const world = new AuthoritativeWorld(options.random);
+  let busy = false,
+    serialTail = Promise.resolve();
+  const leaving = new Set<string>();
+  function serial<T>(action: () => Promise<T>) {
+    const next = serialTail.then(async () => {
+      busy = true;
+      try {
+        return await action();
+      } finally {
+        busy = false;
+      }
+    });
+    serialTail = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+  async function checkpoint() {
+    const result = await store.checkpoint(
+      persistenceKey,
+      worldRevision,
+      [...world.players.values()],
+      [...world.economy.ground.values()],
+    );
+    worldRevision = result.revision;
+    for (const [id, revision] of Object.entries(result.actors)) {
+      const actor = world.players.get(id);
+      if (actor) actor.revision = revision;
+    }
+    for (const id of leaving) {
+      world.remove(id);
+      leaving.delete(id);
+    }
+  }
+  async function commitAction<T>(action: () => T) {
+    const states = new Map(
+      [...world.players].map(([id, actor]) => [
+        id,
+        structuredClone(actor.state),
+      ]),
+    );
+    const ground = structuredClone([...world.economy.ground.values()]);
+    try {
+      const result = action();
+      await checkpoint();
+      return result;
+    } catch (error) {
+      for (const [id, state] of states) {
+        const actor = world.players.get(id);
+        if (actor) actor.state = state;
+      }
+      world.economy.ground.clear();
+      for (const record of ground) world.economy.ground.set(record.id, record);
+      throw error instanceof Rejected
+        ? error
+        : new Rejected("persistence_failed");
+    }
+  }
+  const checkpointTimer = setInterval(() => {
+    if (
+      busy ||
+      (!world.players.size && !world.economy.ground.size && !leaving.size)
+    )
+      return;
+    const work = serial(checkpoint).catch((error) =>
+      console.error(
+        "Checkpoint failed; retaining in-memory state:",
+        (error as Error).message,
+      ),
+    );
+    pending.add(work);
+    void work.finally(() => pending.delete(work));
+  }, options.checkpointMs ?? 1000);
   const entered = new Map<WebSocket, string>();
   const alive = new WeakMap<WebSocket, boolean>();
   const heartbeat = setInterval(() => {
@@ -59,6 +143,10 @@ export async function startService(
   let lastTick = performance.now();
   const timer = setInterval(() => {
     const now = performance.now();
+    if (busy) {
+      lastTick = now;
+      return;
+    }
     world.step(Math.min(0.1, (now - lastTick) / 1000));
     lastTick = now;
     const payload = JSON.stringify({
@@ -106,27 +194,24 @@ export async function startService(
     socket.on("error", () => {});
     socket.on("close", () => {
       entered.delete(socket);
-      const closing = queue.then(async () => {
-        if (!characterId) return;
-        const actor = world.players.get(characterId);
-        if (!actor) return;
-        actor.path = [];
-        try {
-          await store.save(
-            actor.account,
-            actor.id,
-            actor.state,
-            actor.revision,
-          );
-        } catch (error) {
-          console.error(
-            "Disconnect persistence failed:",
-            (error as Error).message,
-          );
-        } finally {
-          world.remove(characterId);
-        }
-      });
+      const closing = queue.then(() =>
+        serial(async () => {
+          if (!characterId) return;
+          const actor = world.players.get(characterId);
+          if (!actor) return;
+          actor.path = [];
+          world.combat.remove(characterId);
+          leaving.add(characterId);
+          try {
+            await checkpoint();
+          } catch (error) {
+            console.error(
+              "Disconnect persistence failed:",
+              (error as Error).message,
+            );
+          }
+        }),
+      );
       pending.add(closing);
       void closing.finally(() => {
         pending.delete(closing);
@@ -143,123 +228,214 @@ export async function startService(
         socket.close(1008, "rate_or_format");
         return;
       }
-      const work = queue.then(async () => {
-        let id = "";
-        try {
-          const request = parse(buffer.toString());
-          id = request.id;
-          if (seen.has(id)) throw new Rejected("duplicate_request");
-          seen.add(id);
-          if (seen.size > 256) seen.delete(seen.values().next().value!);
-          const data = request.data;
-          let result: unknown;
-          if (request.op === "register" || request.op === "login") {
-            if (account) throw new Rejected("already_authenticated");
-            fields(data, ["username", "password"]);
-            if (request.op === "register") {
-              await store.register(data.username, data.password);
-              result = { registered: true };
+      const work = queue.then(() =>
+        serial(async () => {
+          let id = "";
+          try {
+            const request = parse(buffer.toString());
+            id = request.id;
+            if (seen.has(id)) throw new Rejected("duplicate_request");
+            seen.add(id);
+            if (seen.size > 256) seen.delete(seen.values().next().value!);
+            const data = request.data;
+            let result: unknown;
+            if (request.op === "register" || request.op === "login") {
+              if (account) throw new Rejected("already_authenticated");
+              fields(data, ["username", "password"]);
+              if (request.op === "register") {
+                await store.register(data.username, data.password);
+                result = { registered: true };
+              } else {
+                account = await store.login(data.username, data.password);
+                result = { authenticated: true };
+              }
             } else {
-              account = await store.login(data.username, data.password);
-              result = { authenticated: true };
+              if (!account) throw new Rejected("unauthenticated");
+              switch (request.op) {
+                case "characters":
+                  fields(data, []);
+                  result = await store.list(account);
+                  break;
+                case "create_character":
+                  fields(data, ["name", "class_id"]);
+                  result = await store.create(
+                    account,
+                    data.name as string,
+                    data.class_id as string,
+                  );
+                  break;
+                case "load_character":
+                  fields(data, ["character_id"]);
+                  result = await store.load(
+                    account,
+                    data.character_id as string,
+                  );
+                  break;
+                case "enter_world": {
+                  fields(data, ["character_id"]);
+                  if (characterId) throw new Rejected("already_in_world");
+                  const loaded = await store.load(
+                    account,
+                    data.character_id as string,
+                  );
+                  if (socket.readyState !== WebSocket.OPEN)
+                    throw new Rejected("disconnected");
+                  const actor = world.join(account, loaded);
+                  characterId = actor.id;
+                  entered.set(socket, actor.id);
+                  result = {
+                    character_id: actor.id,
+                    state: actor.state,
+                    world: world.snapshot(),
+                  };
+                  break;
+                }
+                case "move": {
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (
+                    Object.keys(data).length !== 2 ||
+                    typeof data.x !== "number" ||
+                    typeof data.y !== "number"
+                  )
+                    throw new Rejected("bad_request");
+                  world.move(characterId, { x: data.x, y: data.y });
+                  result = { accepted: true };
+                  break;
+                }
+                case "select_target":
+                  fields(data, ["target_id"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  world.combat.select(characterId, data.target_id as string);
+                  result = { accepted: true };
+                  break;
+                case "cast":
+                  fields(data, ["skill_id"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  world.combat.cast(characterId, data.skill_id as string);
+                  result = { accepted: true };
+                  break;
+                case "allocate": {
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (
+                    Object.keys(data).length !== 2 ||
+                    typeof data.attribute !== "string" ||
+                    typeof data.amount !== "number"
+                  )
+                    throw new Rejected("bad_request");
+                  const actor = world.players.get(characterId)!;
+                  if (actor.state.hp <= 0) throw new Rejected("dead");
+                  allocate(actor.state, data.attribute, data.amount);
+                  result = { accepted: true };
+                  break;
+                }
+                case "buy":
+                  fields(data, ["shop_id", "definition"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  result = await commitAction(() => {
+                    world.economy.buy(
+                      characterId!,
+                      data.shop_id as string,
+                      data.definition as string,
+                    );
+                    return { accepted: true };
+                  });
+                  break;
+                case "sell":
+                  fields(data, ["shop_id", "uid"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  result = await commitAction(() => {
+                    world.economy.sell(
+                      characterId!,
+                      data.shop_id as string,
+                      data.uid as string,
+                    );
+                    return { accepted: true };
+                  });
+                  break;
+                case "pickup":
+                case "drop":
+                case "equip":
+                case "consume":
+                case "repair":
+                case "upgrade": {
+                  const key = request.op === "pickup" ? "ground_id" : "uid";
+                  fields(data, [key]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  result = await commitAction(() => {
+                    const value = data[key] as string;
+                    switch (request.op) {
+                      case "pickup":
+                        world.economy.pickup(characterId!, value);
+                        break;
+                      case "drop":
+                        world.economy.drop(characterId!, value);
+                        break;
+                      case "equip":
+                        world.economy.equip(characterId!, value);
+                        break;
+                      case "consume":
+                        world.economy.consume(characterId!, value);
+                        break;
+                      case "repair":
+                        world.economy.repair(characterId!, value);
+                        break;
+                      case "upgrade":
+                        return world.economy.upgrade(characterId!, value);
+                    }
+                    return { accepted: true };
+                  });
+                  break;
+                }
+                case "unequip":
+                  fields(data, ["slot"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  result = await commitAction(() => {
+                    world.economy.unequip(characterId!, data.slot as string);
+                    return { accepted: true };
+                  });
+                  break;
+                case "inventory_move": {
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (
+                    Object.keys(data).length !== 3 ||
+                    typeof data.uid !== "string" ||
+                    typeof data.x !== "number" ||
+                    typeof data.y !== "number"
+                  )
+                    throw new Rejected("bad_request");
+                  result = await commitAction(() => {
+                    world.economy.move(
+                      characterId!,
+                      data.uid as string,
+                      data.x as number,
+                      data.y as number,
+                    );
+                    return { accepted: true };
+                  });
+                  break;
+                }
+                default:
+                  throw new Rejected("unknown_operation");
+              }
             }
-          } else {
-            if (!account) throw new Rejected("unauthenticated");
-            switch (request.op) {
-              case "characters":
-                fields(data, []);
-                result = await store.list(account);
-                break;
-              case "create_character":
-                fields(data, ["name", "class_id"]);
-                result = await store.create(
-                  account,
-                  data.name as string,
-                  data.class_id as string,
-                );
-                break;
-              case "load_character":
-                fields(data, ["character_id"]);
-                result = await store.load(account, data.character_id as string);
-                break;
-              case "enter_world": {
-                fields(data, ["character_id"]);
-                if (characterId) throw new Rejected("already_in_world");
-                const loaded = await store.load(
-                  account,
-                  data.character_id as string,
-                );
-                if (socket.readyState !== WebSocket.OPEN)
-                  throw new Rejected("disconnected");
-                const actor = world.join(account, loaded);
-                characterId = actor.id;
-                entered.set(socket, actor.id);
-                result = {
-                  character_id: actor.id,
-                  state: actor.state,
-                  world: world.snapshot(),
-                };
-                break;
-              }
-              case "move": {
-                if (!characterId) throw new Rejected("not_in_world");
-                if (
-                  Object.keys(data).length !== 2 ||
-                  typeof data.x !== "number" ||
-                  typeof data.y !== "number"
-                )
-                  throw new Rejected("bad_request");
-                world.move(characterId, { x: data.x, y: data.y });
-                result = { accepted: true };
-                break;
-              }
-              case "select_target":
-                fields(data, ["target_id"]);
-                if (!characterId) throw new Rejected("not_in_world");
-                world.combat.select(characterId, data.target_id as string);
-                result = { accepted: true };
-                break;
-              case "cast":
-                fields(data, ["skill_id"]);
-                if (!characterId) throw new Rejected("not_in_world");
-                world.combat.cast(characterId, data.skill_id as string);
-                result = { accepted: true };
-                break;
-              case "allocate": {
-                if (!characterId) throw new Rejected("not_in_world");
-                if (
-                  Object.keys(data).length !== 2 ||
-                  typeof data.attribute !== "string" ||
-                  typeof data.amount !== "number"
-                )
-                  throw new Rejected("bad_request");
-                const actor = world.players.get(characterId)!;
-                if (actor.state.hp <= 0) throw new Rejected("dead");
-                allocate(actor.state, data.attribute, data.amount);
-                result = { accepted: true };
-                break;
-              }
-              default:
-                throw new Rejected("unknown_operation");
-            }
+            if (socket.readyState === WebSocket.OPEN)
+              socket.send(JSON.stringify({ v: 1, id, ok: true, data: result }));
+          } catch (error) {
+            const code =
+              error instanceof Rejected
+                ? error.message
+                : error instanceof SyntaxError
+                  ? "bad_request"
+                  : "internal_error";
+            if (!(error instanceof Rejected) && !(error instanceof SyntaxError))
+              console.error("Request failed:", (error as Error).message);
+            if (socket.readyState === WebSocket.OPEN)
+              socket.send(JSON.stringify({ v: 1, id, ok: false, error: code }));
+          } finally {
+            queued--;
           }
-          if (socket.readyState === WebSocket.OPEN)
-            socket.send(JSON.stringify({ v: 1, id, ok: true, data: result }));
-        } catch (error) {
-          const code =
-            error instanceof Rejected
-              ? error.message
-              : error instanceof SyntaxError
-                ? "bad_request"
-                : "internal_error";
-          if (!(error instanceof Rejected) && !(error instanceof SyntaxError))
-            console.error("Request failed:", (error as Error).message);
-          if (socket.readyState === WebSocket.OPEN)
-            socket.send(JSON.stringify({ v: 1, id, ok: false, error: code }));
-        } finally {
-          queued--;
-        }
-      });
+        }),
+      );
       queue = work;
       pending.add(work);
       void work.finally(() => pending.delete(work));
@@ -271,6 +447,7 @@ export async function startService(
     port: typeof address === "object" && address ? address.port : port,
     close: async () => {
       clearInterval(timer);
+      clearInterval(checkpointTimer);
       clearInterval(heartbeat);
       for (const socket of server.clients) socket.terminate();
       await new Promise<void>((resolve, reject) =>
@@ -278,6 +455,7 @@ export async function startService(
       );
       await Promise.all(connections);
       while (pending.size) await Promise.all(pending);
+      if (leaving.size) await serial(checkpoint);
     },
   };
 }

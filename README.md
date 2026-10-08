@@ -1,8 +1,8 @@
-﻿# ÉTER
+# ÉTER
 
 MMORPG 2D original en desarrollo con Godot 4, GDScript, Node.js/TypeScript, WebSocket y PostgreSQL. La vertical slice completa sigue en construcción: todavía no es un MMORPG terminado.
 
-Cliente local jugable: Aldea de Éter original, movimiento por mouse con colisiones y navegación, Guerrero/Mago/Elfa, seis especies de monstruos, combate y seis habilidades, niveles/atributos, inventario con drag/drop, equipo, drops, oro, tiendas, reparación/mejoras, minimapa y guardado JSON. Backend independiente: cuentas/personajes SQL, sesiones exclusivas, movimiento/combate/IA/progresión autoritativos y snapshots entre dos peers WebSocket. Godot aún funciona offline.
+Cliente local jugable: Aldea de Éter original, movimiento por mouse con colisiones y navegación, Guerrero/Mago/Elfa, seis especies de monstruos, combate y seis habilidades, niveles/atributos, inventario con drag/drop, equipo, drops, oro, tiendas, reparación/mejoras, minimapa y guardado JSON. Backend independiente: cuentas/personajes SQL, sesiones exclusivas, movimiento/combate/IA/progresión/inventario/economía autoritativos, checkpoints SQL y snapshots entre dos peers WebSocket. Godot aún funciona offline.
 
 ## Ejecutar en Windows
 
@@ -29,12 +29,12 @@ M o clic en minimapa abre mapa. Enter abre chat con Global/Local; offline inform
 
 Cliente guarda por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: inventario/equipo/oro/XP, checksum y escritura temporal/rename. Servidor guarda cuentas/personajes/posición en SQL, directorio server/.local ignorado por Git. Son dos modos separados: no hay migración de guardados locales a cuentas online todavía.
 
-Test cliente importa/headless y verifica movimiento, clases, combate, IA, progresión, inventario y economía. -Graphics añade input/drag reales, NPC/tiendas, mapa/chat/UI, snapshots a disco y recarga en otro proceso. Tests/capturas no guardan personajes ni configuración del usuario; fixtures en artifacts. Backend tiene39 tests: movimiento/combate/IA/progresión, dos peersWS, ownership/concurrencia, heartbeat, SQL/reinicio y cierre Windows ordenado/idempotente. [TEST_REPORT](docs/TEST_REPORT.md) distingue pruebas reales y pendientes.
+Test cliente importa/headless y verifica movimiento, clases, combate, IA, progresión, inventario y economía. -Graphics añade input/drag reales, NPC/tiendas, mapa/chat/UI, snapshots a disco y recarga en otro proceso. Tests/capturas no guardan personajes ni configuración del usuario; fixtures en artifacts. Backend tiene59 tests: movimiento/combate/IA/progresión, dos peersWS, ownership/concurrencia, heartbeat, SQL/reinicio y cierre Windows ordenado/idempotente. [TEST_REPORT](docs/TEST_REPORT.md) distingue pruebas reales y pendientes.
 
 Recursos originales locales generados con `node tools/generate-art.mjs`; geometría original compartida con `node tools/generate-world.mjs`; `node tools/sync-data.mjs` sincroniza catálogos (runner lo hace automáticamente). Sin recursos remotos durante juego. PostgreSQL viene de dependencia local, no requiere instalación global ni Docker.
 
 ## Límites actuales y continuidad
 
-Godot online, inventario/loot/economía autoritativos, interacción entre dos clientes Godot, reconexión, party/comercio, tres mapas conectados, misiones/contenido y exportaciónWindows están pendientes. Dos peersWS verificados no equivalen a multijugador jugable completo. Objetos del suelo del cliente son temporales, posición local no se guarda; arte procedural sigue provisional, modelos de armadura visual limitados y proyectiles resuelven daño al lanzar. Servidor guarda al desconectar: checkpoints, recuperación durable ante falloSQL y cooldowns persistentes al reconectar pendientes.
+Godot online, interacción entre dos clientes Godot, reconexión, party/comercio, tres mapas conectados, misiones/contenido y exportaciónWindows están pendientes. Dos peersWS verificados no equivalen a multijugador jugable completo. Objetos del suelo del cliente son temporales, posición local no se guarda; arte procedural sigue provisional, modelos de armadura visual limitados y proyectiles resuelven daño al lanzar. Servidor confirma transacciones económicas en SQL, guarda checkpoints periódicos y al desconectar; falla de guardado mantiene exclusión hasta recuperar. Cooldowns/respawn persisten. Una interrupción SQL prolongada seguida de caída del proceso pierde avance de combate posterior al último checkpoint confirmado.
 
 Continuar por [NEXT_TASK](docs/NEXT_TASK.md), [PROGRESS](docs/PROGRESS.md) y [MASTER_PLAN](docs/MASTER_PLAN.md). Reglas en AGENTS.md, arquitectura/diseño/arte en docs. Commits locales por hitos, sin push ni despliegue.

@@ -1,6 +1,8 @@
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import type { Pool } from "pg";
 import { createCharacter, type Character } from "./rules.js";
+import type { Ground } from "./economy.js";
+import { valid as validInventory } from "./inventory.js";
 
 export class Rejected extends Error {}
 async function hash(password: string, salt: string): Promise<Buffer> {
@@ -31,7 +33,8 @@ export class Store {
       CREATE TABLE IF NOT EXISTS characters (
       id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id), name text NOT NULL, state jsonb NOT NULL,
       revision integer NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now());
-      CREATE UNIQUE INDEX IF NOT EXISTS character_name_unique ON characters(lower(name));`);
+      CREATE UNIQUE INDEX IF NOT EXISTS character_name_unique ON characters(lower(name));
+      CREATE TABLE IF NOT EXISTS world_states(id text PRIMARY KEY,revision integer NOT NULL DEFAULT 0,ground jsonb NOT NULL DEFAULT '[]'::jsonb);`);
   }
   async register(username: unknown, password: unknown) {
     credentials(username, password);
@@ -136,5 +139,79 @@ export class Store {
     );
     if (!result.rowCount) throw new Rejected("stale_state");
     return Number(result.rows[0].revision);
+  }
+  async loadWorld(id: string) {
+    const result = await this.pool.query(
+      "SELECT revision,ground FROM world_states WHERE id=$1",
+      [id],
+    );
+    return result.rows[0] as { revision: number; ground: Ground[] } | undefined;
+  }
+  async checkpoint(
+    worldId: string,
+    expectedWorldRevision: number,
+    actors: {
+      id: string;
+      account: string;
+      revision: number;
+      state: Character;
+    }[],
+    ground: Ground[],
+  ) {
+    const ids = new Set<string>();
+    for (const actor of actors) {
+      if (
+        !validInventory(actor.state.inventory, actor.state.class_id) ||
+        !Number.isSafeInteger(actor.state.gold) ||
+        actor.state.gold < 0
+      )
+        throw new Error("invalid_checkpoint");
+      for (const item of actor.state.inventory.items) {
+        if (ids.has(item.uid)) throw new Error("duplicate_item");
+        ids.add(item.uid);
+      }
+    }
+    for (const record of ground) {
+      const uid = record.item?.uid ?? record.id;
+      if (ids.has(uid) || (record.item && record.id !== record.item.uid))
+        throw new Error("duplicate_item");
+      ids.add(uid);
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "INSERT INTO world_states(id) VALUES($1) ON CONFLICT DO NOTHING",
+        [worldId],
+      );
+      const current = await client.query(
+        "SELECT revision FROM world_states WHERE id=$1 FOR UPDATE",
+        [worldId],
+      );
+      if (current.rows[0].revision !== expectedWorldRevision)
+        throw new Rejected("stale_world");
+      const revisions: Record<string, number> = {};
+      for (const actor of [...actors].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      )) {
+        const result = await client.query(
+          "UPDATE characters SET state=$3,revision=revision+1,updated_at=now() WHERE account_id=$1 AND id=$2 AND revision=$4 RETURNING revision",
+          [actor.account, actor.id, actor.state, actor.revision],
+        );
+        if (!result.rowCount) throw new Rejected("stale_state");
+        revisions[actor.id] = result.rows[0].revision;
+      }
+      const updated = await client.query(
+        "UPDATE world_states SET ground=$2,revision=revision+1 WHERE id=$1 RETURNING revision",
+        [worldId, JSON.stringify(ground)],
+      );
+      await client.query("COMMIT");
+      return { revision: Number(updated.rows[0].revision), actors: revisions };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }

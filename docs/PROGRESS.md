@@ -1,6 +1,9 @@
 # Progreso
 
-Fase actual: combate, IA y progresión autoritativos verificados; inventario/economía servidor siguientes.
+Fase actual: inventario, loot y economía autoritativos verificados con PostgreSQL real; integración Godot online siguiente.
+
+Hito económico servidor: cuadrícula/stack/equipo/pociones, drops únicos, protección de propietario, compra/venta/reparación/mejora y validación de vida/rango/LOS. Cada transacción confirma SQL antes de responder. Checkpoints atómicos guardan personajes y suelo con revisiones CAS; una excepción revierte todo. Desconexión fallida conserva exclusión hasta un checkpoint exitoso. Cooldowns, retraso de regeneración y respawn usan deadlines persistentes para reconectar.
+Verificación: tools/test-server.ps1 exit0, 59 tests y smoke. PostgreSQL18.4 real: dos conexiones compiten por un drop (una sola recogida); fallo SQL controlado revierte compra; CAS obsoleto revierte filas previas; reinicio conserva suelo sin duplicar inventario; recuperación de desconexión libera sesión sólo después de guardar. Cooldown SQL tras reconectar rechazado. Cliente economía397 checks nuevamente PASS por config compartida. Dos clientes Godot todavía no conectados; objetivo sigue activo.
 
 Repositorio inicialmente vacío. Entorno: Windows, Godot 4.7.2 estable, Node 24.19.0, npm 11.17.0 y Git. Docker y psql no detectados en PATH. Sin instalaciones globales.
 

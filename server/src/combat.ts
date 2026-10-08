@@ -89,19 +89,59 @@ export class CombatSimulation {
   join(id: string) {
     const actor = this.world.players.get(id)!;
     actor.state.stats = derive(actor.state);
+    const runtime = (actor.state.combat_state ??= {
+      cooldown_deadlines: {},
+      respawn_deadline: 0,
+      regeneration_deadline: 0,
+    });
+    const remaining = (deadline: number) =>
+      Math.max(0, (deadline - Date.now()) / 1000);
     this.battles.set(id, {
       auto: 0,
       chase: 0,
       regen: 0,
-      sinceDamage: 0,
-      respawn: actor.state.hp <= 0 ? combatRules.player_respawn_seconds : 0,
-      cooldowns: {},
+      sinceDamage: runtime.regeneration_deadline
+        ? Math.max(
+            0,
+            combatRules.regeneration_delay -
+              remaining(runtime.regeneration_deadline),
+          )
+        : 0,
+      respawn:
+        actor.state.hp <= 0
+          ? runtime.respawn_deadline
+            ? remaining(runtime.respawn_deadline)
+            : combatRules.player_respawn_seconds
+          : 0,
+      cooldowns: Object.fromEntries(
+        Object.entries(runtime.cooldown_deadlines).map(([skill, deadline]) => [
+          skill,
+          remaining(deadline),
+        ]),
+      ),
     });
   }
   remove(id: string) {
     this.battles.delete(id);
     for (const enemy of this.enemies.values())
       if (enemy.target === id) enemy.target = undefined;
+  }
+  private syncRuntime(id: string, battle: Battle) {
+    const actor = this.world.players.get(id);
+    if (!actor) return;
+    const now = Date.now();
+    actor.state.combat_state = {
+      cooldown_deadlines: Object.fromEntries(
+        Object.entries(battle.cooldowns)
+          .filter(([, left]) => left > 0)
+          .map(([skill, left]) => [skill, now + left * 1000]),
+      ),
+      respawn_deadline:
+        actor.state.hp <= 0 ? now + Math.max(0, battle.respawn) * 1000 : 0,
+      regeneration_deadline:
+        now +
+        Math.max(0, combatRules.regeneration_delay - battle.sinceDamage) * 1000,
+    };
   }
   cancel(id: string) {
     const battle = this.battles.get(id);
@@ -174,6 +214,7 @@ export class CombatSimulation {
     }
     actor.state.mana -= skill.mana;
     battle.cooldowns[skillId] = skill.cooldown;
+    this.syncRuntime(id, battle);
     if (skill.mode === "heal")
       actor.state.hp = Math.min(
         Number(actor.state.stats.max_hp),
@@ -282,6 +323,7 @@ export class CombatSimulation {
         lost_experience: deathPenalty(actor.state),
       });
     }
+    this.syncRuntime(id, battle);
   }
   private follow(enemy: Enemy, point: Point, delta: number) {
     enemy.repath -= delta;
@@ -507,6 +549,7 @@ export class CombatSimulation {
           break;
       }
     }
+    for (const [id, battle] of this.battles) this.syncRuntime(id, battle);
   }
   snapshot() {
     return [...this.enemies.values()].map((enemy) => ({

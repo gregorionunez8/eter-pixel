@@ -470,7 +470,10 @@ test(
           );
           const saved = await reopened.load(account, characterId);
           assert.equal(saved.state.gold, 17);
-          assert.equal(saved.revision, 2);
+          assert.ok(
+            saved.revision >= 2,
+            "periodic and disconnect checkpoints advance revision",
+          );
           assert.deepEqual(saved.state.position, { x: 848, y: 592 });
           assert.equal(saved.state.inventory.equipment.weapon, weaponUid);
           assert.equal(saved.state.inventory.items[0].uid, weaponUid);

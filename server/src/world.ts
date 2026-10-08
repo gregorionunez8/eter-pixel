@@ -2,6 +2,7 @@ import type { Character } from "./rules.js";
 import { Navigation, geometry, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
 import { CombatSimulation } from "./combat.js";
+import { WorldEconomy } from "./economy.js";
 type Actor = {
   id: string;
   account: string;
@@ -14,9 +15,14 @@ export class AuthoritativeWorld {
   readonly navigation = new Navigation();
   readonly players = new Map<string, Actor>();
   readonly combat: CombatSimulation;
+  readonly economy: WorldEconomy;
   tick = 0;
-  constructor(random: () => number = Math.random) {
+  constructor(
+    random: () => number = Math.random,
+    lootRandom: () => number = Math.random,
+  ) {
     this.combat = new CombatSimulation(this, random);
+    this.economy = new WorldEconomy(this, lootRandom);
   }
   join(
     account: string,
@@ -108,6 +114,7 @@ export class AuthoritativeWorld {
       }
     }
     this.combat.step(delta);
+    this.economy.expire();
   }
   snapshot() {
     return {
@@ -115,6 +122,7 @@ export class AuthoritativeWorld {
       map_id: geometry.id,
       enemies: this.combat.snapshot(),
       events: this.combat.events,
+      ground: this.economy.snapshot(),
       players: [...this.players.values()].map((actor) => ({
         id: actor.id,
         name: actor.state.name,
