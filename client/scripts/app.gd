@@ -5,6 +5,8 @@ var environment: Dictionary = {}
 var player_name := "Viajero"
 var class_id := "warrior"
 var character: Dictionary = {}
+var persistence_enabled := true
+var active_character := false
 
 func _ready() -> void:
 	settings.load("user://settings.cfg")
@@ -15,6 +17,17 @@ func _ready() -> void:
 		log_error("No se pudo cargar la configuración de entorno")
 	apply_settings()
 	character = EterCharacter.create(player_name, class_id)
+	for argument in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if "test_" in argument or "--capture" in argument or "--smoke" in argument:
+			persistence_enabled = false
+
+func save_character() -> void:
+	if persistence_enabled and active_character and not EterSave.save(character):
+		log_error("No se pudo guardar el personaje local")
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_character()
 
 func apply_settings() -> void:
 	if DisplayServer.get_name() != "headless":

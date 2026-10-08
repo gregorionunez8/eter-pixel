@@ -19,3 +19,5 @@ Objetivo: vertical slice original de ÉTER, MMORPG 2D con control por mouse, per
 15. Entrega: README, scripts Windows, exportación si existen plantillas y límites explícitos.
 
 Cada hito requiere evidencia y commit. La falta de PostgreSQL no debe ocultarse usando una prueba simulada como persistencia SQL real.
+
+Estado2026-10-08: módulos1-8 integrados en modo local y verificados por suites del motor; persisten objetos/personaje en JSON local. Próximo módulo9 economía. Multijugador, SQL y tres mapas aún pendientes, objetivo completo no cumplido.

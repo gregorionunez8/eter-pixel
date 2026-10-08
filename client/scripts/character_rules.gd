@@ -18,6 +18,9 @@ static func create(value: String, class_id: String) -> Dictionary:
 		return {}
 	var definition: Dictionary = rules.classes[class_id]
 	var result := {"name": value, "class_id": class_id, "level": 1, "experience": 0, "attribute_points": 0, "attributes": definition.attributes.duplicate(true), "appearance": {"weapon": definition.weapon_visual, "armor": definition.armor_visual}}
+	result["inventory"] = EterInventory.initial(class_id)
+	result["gold"] = 0
+	result["starter_ground_claimed"] = false
 	result["stats"] = derive(result)
 	result["hp"] = result.stats.max_hp
 	result["mana"] = result.stats.max_mana
@@ -40,4 +43,8 @@ static func derive(character: Dictionary) -> Dictionary:
 	stats["attack"] = formula(definition.attack, character.attributes, int(character.level))
 	stats["damage_type"] = definition.damage_type
 	stats["speed"] = definition.speed
+	if character.has("inventory"):
+		var bonuses := EterInventory.bonuses(character.inventory)
+		for stat in bonuses:
+			stats[stat] = int(stats.get(stat,0)) + int(bonuses[stat])
 	return stats

@@ -25,6 +25,7 @@ func _ready() -> void:
 	sprite.vframes = 8
 	sprite.position = Vector2(0, -18)
 	add_child(sprite)
+	update_equipment_visual()
 	add_child(camera)
 	camera.position_smoothing_enabled = false
 	var label := Label.new()
@@ -35,6 +36,11 @@ func _ready() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
+
+func update_equipment_visual() -> void:
+	var definition: Dictionary = EterCharacter.definitions().classes[App.class_id]
+	var suffix := "" if App.character.inventory.equipment.has("weapon") else "_unarmed"
+	sprite.texture = load("res://assets/%s%s.png" % [definition.sprite,suffix])
 
 func move_to(point: Vector2) -> void:
 	if not navigation:

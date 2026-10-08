@@ -18,4 +18,8 @@ Catalog autoload contiene el cache de JSON empaquetados y se registra antes de A
 
 EterProgression centraliza XP requerido, premios/niveles, asignación y penalización. Datos shared/progression.json. world recompensa sólo muerte de EterMonster; efigies excluidas. Al subir nivel recalcula estadísticas y llena recursos; al asignar aumenta límites conservando déficit. Penalización descuenta sólo XP actual sin bajar nivel. Reset sólo cuenta y valida elegibilidad según flag, operación todavía no implementada.
 
+Inventario: lista única de instancias UID y equipo por referencia. Objetos en grid tienen x/y no negativos; equipados x=y=-1. Transacciones locales con draft para apilar/equipar evitan perder objetos si no hay espacio; remove transfiere misma instancia al suelo y pickup valida ownership/distancia/espacio antes de eliminar ground. EterCharacter.derive calcula bonos, UI emite changed y world sincroniza estado/sprite/guardado. Componentes Control usan drag APIs del motor; no hay lógica económica confiada a servidor aún.
+
+Persistencia local previa a backend: EterSave serializa character en envelope versión1/payload/checksum, temporal y rename. Loader valida rangos/objetos y deriva stats. user://characters por nombre, último por puntero; tests/capturas usan artifacts. No guarda posición/mapa ni suelo. Checksum verifica integridad accidental; SQL y autoridad server reemplazarán el estado local online, no aceptarán este archivo como prueba de propiedad.
+
 Referencia de escalado: https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html

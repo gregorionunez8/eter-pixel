@@ -1,0 +1,21 @@
+{
+  "grid_width":8,"grid_height":6,
+  "rarities":{"normal":{"name":"Normal","color":"75828b","multiplier":1},"magic":{"name":"Mágico","color":"64a8cf","multiplier":1.15},"excellent":{"name":"Excelente","color":"82bf85","multiplier":1.3},"legendary":{"name":"Legendario","color":"d5aa64","multiplier":1.6}},
+  "upgrade":{"max":15,"stat_per_level":2,"gold_base":20,"gold_per_level":15,"failure_downgrade":1,"chances":[1,0.95,0.9,0.85,0.8,0.75,0.7,0.65,0.6,0.5,0.4,0.3,0.25,0.2,0.15]},
+  "slots":["weapon","armor","helmet","gloves","boots","shield","ring","pendant"],
+  "definitions":{
+    "starter_sword":{"name":"Espada del refugio","category":"weapon","size":[1,2],"slot":"weapon","classes":["warrior"],"bonuses":{},"icon":0,"stack":1,"durability":100},
+    "starter_staff":{"name":"Bastón de éter","category":"weapon","size":[1,2],"slot":"weapon","classes":["mage"],"bonuses":{},"icon":1,"stack":1,"durability":100},
+    "starter_bow":{"name":"Arco de fresno","category":"weapon","size":[2,3],"slot":"weapon","classes":["elf"],"bonuses":{},"icon":2,"stack":1,"durability":100},
+    "bronze_sword":{"name":"Espada de bronce","category":"weapon","size":[1,2],"slot":"weapon","classes":["warrior"],"bonuses":{"attack":8},"icon":0,"stack":1,"durability":100},
+    "robe":{"name":"Armadura del viajero","category":"armor","size":[2,3],"slot":"armor","bonuses":{"defense":3},"icon":3,"stack":1,"durability":100},
+    "helmet":{"name":"Yelmo de hierro","category":"helmet","size":[2,2],"slot":"helmet","bonuses":{"defense":2},"icon":4,"stack":1,"durability":100},
+    "gloves":{"name":"Guantes de cuero","category":"gloves","size":[2,2],"slot":"gloves","bonuses":{"defense":1},"icon":5,"stack":1,"durability":100},
+    "boots":{"name":"Botas de viaje","category":"boots","size":[1,2],"slot":"boots","bonuses":{"defense":1},"icon":6,"stack":1,"durability":100},
+    "shield":{"name":"Escudo de roble","category":"shield","size":[2,2],"slot":"shield","bonuses":{"defense":4},"icon":7,"stack":1,"durability":100},
+    "ring":{"name":"Anillo de bruma","category":"ring","size":[1,1],"slot":"ring","bonuses":{"max_hp":10},"icon":8,"stack":1,"durability":100},
+    "pendant":{"name":"Colgante azul","category":"pendant","size":[1,1],"slot":"pendant","bonuses":{"max_mana":8},"icon":9,"stack":1,"durability":100},
+    "potion":{"name":"Poción de vida","category":"potion","size":[1,1],"bonuses":{},"icon":10,"stack":10,"durability":0,"heal_fraction":0.35},
+    "ore":{"name":"Mineral de éter","category":"material","size":[1,1],"bonuses":{},"icon":11,"stack":20,"durability":0}
+  }
+}

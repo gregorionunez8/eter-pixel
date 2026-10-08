@@ -33,6 +33,7 @@ const shrine=new Canvas(96,96);shrine.ellipse(48,75,44,13,P.ink,140);shrine.elli
 for(let i=0;i<25;i++)shrine.rect(25+random()*46,50+random()*12,3,1,P.ether);shrine.rect(38,40,21,19,P.ink);shrine.rect(40,42,17,13,P.stone);for(let y=10;y<49;y++){const w=Math.floor(2+Math.sin((y-10)/39*Math.PI)*9);shrine.rect(48-w,y,w*2,1,P.ink);shrine.rect(50-w,y,w*2-4,1,P.ether);shrine.rect(48,y,3,1,'#b1e6df');}shrine.save('shrine');
 const wall=new Canvas(32,48);wall.rect(0,17,32,30,P.ink);wall.rect(1,18,30,26,P.stone);wall.rect(1,18,30,3,P.light);for(let y=25;y<44;y+=7){wall.rect(1,y,30,1,P.shadow);wall.rect(y%2?8:20,y,1,7,P.shadow);}wall.save('wall');
 for(const characterClass of ['warrior','mage','elf']) {
+for(const armed of [true,false]) {
 const actor=new Canvas(128,384);
 const armor=characterClass==='mage'?'#554b83':characterClass==='elf'?'#527357':P.stone;
 const armorLight=characterClass==='mage'?'#8175a8':characterClass==='elf'?'#82a26b':P.light;
@@ -42,10 +43,11 @@ for(let d=0;d<8;d++)for(let f=0;f<4;f++){
  actor.rect(x-8,y+15+b,16,20,P.ink);actor.rect(x-6,y+17+b,12,15,armor);actor.rect(x-5,y+18+b,3,12,armorLight);actor.rect(x-7,y+29+b,14,3,P.wood);actor.rect(x-1,y+29+b,3,2,P.gold);
  actor.rect(x-11,y+18+b+s,4,12,P.ink);actor.rect(x+7,y+18+b-s,4,12,P.ink);actor.rect(x-10,y+18+b+s,2,7,P.light);actor.rect(x+8,y+18+b-s,2,7,P.stone);actor.rect(x-10,y+27+b+s,2,2,P.skin);actor.rect(x+8,y+27+b-s,2,2,P.skin);
  actor.ellipse(x,y+11+b,7,8,P.ink);actor.ellipse(x,y+10+b,6,6,armorLight);actor.rect(x-4,y+4+b,8,4,armor);actor.rect(x-1,y+4+b,2,7,armorLight);const back=d>=5;actor.rect(x-4,y+12+b,8,4,back?armor:P.skin);if(!back){const e=d<=1?2:d>=3?-2:0;actor.rect(x-3+e,y+12+b,2,1,P.ink);actor.rect(x+2+e,y+12+b,2,1,P.ink);}
- if(characterClass==='warrior'){actor.line(x+11,y+13+b,x+11,y+30+b,P.light);actor.rect(x+8,y+27+b,7,2,P.gold);}
- if(characterClass==='mage'){actor.rect(x-7,y+32+b,14,7,P.ink);actor.rect(x-6,y+32+b,12,5,armor);actor.rect(x-4,y+33+b,2,4,armorLight);actor.line(x+11,y+10+b,x+11,y+38+b,P.copper);actor.ellipse(x+11,y+9+b,3,3,P.ink);actor.ellipse(x+11,y+9+b,2,2,P.ether);actor.rect(x-5,y+6+b,10,4,armor);}
- if(characterClass==='elf'){actor.rect(x-7,y+6+b,3,11,P.gold);actor.rect(x+5,y+6+b,3,11,P.gold);actor.ellipse(x+10,y+23+b,4,11,P.copper);actor.ellipse(x+10,y+23+b,2,9,P.ink,0);actor.line(x+10,y+12+b,x+10,y+34+b,P.gold);}
-}actor.save(characterClass);if(characterClass==='warrior')actor.save('traveler');
+ if(characterClass==='warrior'&&armed){actor.line(x+11,y+13+b,x+11,y+30+b,P.light);actor.rect(x+8,y+27+b,7,2,P.gold);}
+ if(characterClass==='mage'){actor.rect(x-7,y+32+b,14,7,P.ink);actor.rect(x-6,y+32+b,12,5,armor);actor.rect(x-4,y+33+b,2,4,armorLight);if(armed){actor.line(x+11,y+10+b,x+11,y+38+b,P.copper);actor.ellipse(x+11,y+9+b,3,3,P.ink);actor.ellipse(x+11,y+9+b,2,2,P.ether);}actor.rect(x-5,y+6+b,10,4,armor);}
+ if(characterClass==='elf'){actor.rect(x-7,y+6+b,3,11,P.gold);actor.rect(x+5,y+6+b,3,11,P.gold);if(armed){actor.ellipse(x+10,y+23+b,4,11,P.copper);actor.ellipse(x+10,y+23+b,2,9,P.ink,0);actor.line(x+10,y+12+b,x+10,y+34+b,P.gold);}}
+}actor.save(characterClass+(armed?'':'_unarmed'));if(characterClass==='warrior'&&armed)actor.save('traveler');
+}
 }
 const dummy=new Canvas(48,64);dummy.ellipse(24,56,18,5,P.ink,110);dummy.rect(20,22,8,34,P.ink);dummy.rect(22,23,4,31,P.copper);dummy.rect(5,26,38,8,P.ink);dummy.rect(7,28,34,4,P.wood);dummy.ellipse(24,18,9,10,P.ink);dummy.ellipse(24,18,7,8,P.gold);dummy.rect(18,15,3,2,P.ink);dummy.rect(27,15,3,2,P.ink);dummy.rect(23,20,2,3,P.copper);dummy.rect(15,25,18,20,P.ink);dummy.rect(17,27,14,16,'#927e50');dummy.rect(18,31,12,2,P.wood);dummy.rect(23,27,2,16,P.copper);dummy.save('training');
 for(const id of ['spider','goblin','wolf','skeleton','orc','guardian']){
@@ -71,4 +73,19 @@ for(const id of ['spider','goblin','wolf','skeleton','orc','guardian']){
   }
  }c.save(id);
 }
-console.log('Generated 18 original PNG assets, including six animated enemy species');
+const icons=new Canvas(192,16);
+for(let i=0;i<12;i++){const x=i*16;
+ if(i===0){icons.line(x+11,2,x+4,11,P.light);icons.line(x+12,2,x+5,11,'#bac7c9');icons.line(x+3,8,x+8,13,P.gold);icons.line(x+5,11,x+2,14,P.wood);}
+ if(i===1){icons.line(x+8,5,x+4,14,P.copper);icons.ellipse(x+9,3,3,3,P.ink);icons.ellipse(x+9,3,2,2,P.ether);}
+ if(i===2){icons.ellipse(x+8,8,5,7,P.copper);icons.ellipse(x+8,8,3,5,P.ink,0);icons.line(x+8,1,x+8,15,P.gold);}
+ if(i===3){icons.rect(x+3,2,10,3,P.light);icons.rect(x+4,5,8,9,P.stone);icons.rect(x+1,4,3,5,P.stone);icons.rect(x+12,4,3,5,P.stone);icons.rect(x+7,5,2,9,P.gold);}
+ if(i===4){icons.ellipse(x+8,7,6,6,P.stone);icons.rect(x+3,8,10,5,P.light);icons.rect(x+4,9,8,2,P.ink);}
+ if(i===5){icons.rect(x+2,5,5,8,P.copper);icons.rect(x+9,5,5,8,P.copper);icons.rect(x+3,3,3,4,P.wood);icons.rect(x+10,3,3,4,P.wood);}
+ if(i===6){icons.rect(x+3,3,8,10,P.wood);icons.rect(x+3,11,11,3,P.copper);icons.rect(x+4,3,2,8,P.copper);}
+ if(i===7){icons.ellipse(x+8,8,6,7,P.light);icons.ellipse(x+8,8,4,5,P.wood);icons.rect(x+7,3,2,10,P.gold);}
+ if(i===8){icons.ellipse(x+8,9,5,5,P.gold);icons.ellipse(x+8,9,3,3,P.ink,0);icons.rect(x+6,3,4,4,P.ether);}
+ if(i===9){icons.ellipse(x+8,6,5,5,P.gold);icons.ellipse(x+8,6,3,3,P.ink,0);icons.rect(x+6,8,4,6,P.ether);}
+ if(i===10){icons.rect(x+6,1,4,4,P.copper);icons.rect(x+5,4,6,3,P.light);icons.ellipse(x+8,10,5,5,'#a9464c');icons.rect(x+5,7,2,5,'#d37969');}
+ if(i===11){icons.ellipse(x+8,9,6,5,P.stone);icons.rect(x+3,6,5,6,P.ether);icons.rect(x+9,4,4,7,P.light);}
+}icons.save('items');
+console.log('Generated original world, actor and item PNG assets');

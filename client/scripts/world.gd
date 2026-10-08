@@ -26,6 +26,10 @@ var character_panel := PanelContainer.new()
 var character_summary := Label.new()
 var attribute_labels: Dictionary = {}
 var allocation_buttons: Dictionary = {}
+var inventory_ui: Control
+var ground_items: Array[EterGroundItem] = []
+var pending_pickup: EterGroundItem
+var save_tick := 0.0
 
 func _ready() -> void:
 	terrain = load("res://assets/terrain.png")
@@ -72,6 +76,9 @@ func _ready() -> void:
 	combat.target_defeated.connect(reward_monster)
 	combat.feedback.connect(func(message: String): message_label.text = message; message_left = 2.5)
 	build_hud()
+	if not App.character.get("starter_ground_claimed",false):
+		spawn_ground_item(EterInventory.make_item("bronze_sword",1,"magic"),spawn_position+Vector2(-96,32))
+		ground_items[0].starter_reward = true
 	var ambient := CanvasModulate.new()
 	ambient.color = Color(0.83, 0.89, 0.96)
 	add_child(ambient)
@@ -166,9 +173,55 @@ func build_hud() -> void:
 	box.add_child(resume)
 	var leave := Button.new()
 	leave.text = "Volver al inicio"
-	leave.pressed.connect(func(): get_tree().reload_current_scene())
+	leave.pressed.connect(func(): App.save_character(); get_tree().reload_current_scene())
 	box.add_child(leave)
 	build_character_panel()
+	inventory_ui = Control.new()
+	inventory_ui.set_script(preload("res://scripts/inventory_ui.gd"))
+	inventory_ui.character = App.character
+	inventory_ui.changed.connect(inventory_changed)
+	inventory_ui.drop_requested.connect(drop_item)
+	hud.add_child(inventory_ui)
+	inventory_ui.hide()
+
+func inventory_changed() -> void:
+	App.character.stats = EterCharacter.derive(App.character)
+	App.character.hp = mini(App.character.hp,App.character.stats.max_hp)
+	App.character.mana = mini(App.character.mana,App.character.stats.max_mana)
+	update_resources()
+	player.update_equipment_visual()
+	App.save_character()
+
+func spawn_ground_item(item: Dictionary, point: Vector2) -> void:
+	var ground := EterGroundItem.new()
+	ground.item = item
+	ground.position = point
+	entities.add_child(ground)
+	ground_items.append(ground)
+
+func drop_item(uid: String) -> void:
+	if player.dead:
+		return
+	var item := EterInventory.remove(App.character.inventory,uid)
+	if not item.is_empty():
+		spawn_ground_item(item,player.position)
+		inventory_changed()
+		inventory_ui.refresh()
+
+func pickup_item(ground: EterGroundItem) -> bool:
+	if not is_instance_valid(ground) or not ground_items.has(ground) or player.dead or player.position.distance_to(ground.position) > 48:
+		return false
+	if not EterInventory.add(App.character.inventory,ground.item):
+		message_label.text = "Inventario lleno"
+		message_left = 2
+		return false
+	ground_items.erase(ground)
+	if ground.starter_reward:
+		App.character.starter_ground_claimed = true
+	ground.queue_free()
+	inventory_changed()
+	inventory_ui.refresh()
+	return true
 
 func build_character_panel() -> void:
 	character_panel.position = Vector2(360, 63)
@@ -247,6 +300,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
 		character_panel.visible = not character_panel.visible
+		inventory_ui.hide()
+		held = false
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+		inventory_ui.visible = not inventory_ui.visible
+		character_panel.hide()
 		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_1, KEY_2]:
 		var index := 0 if event.keycode == KEY_1 else 1
@@ -260,6 +318,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func handle_primary(point: Vector2) -> void:
 	if player.dead:
 		return
+	pending_pickup = null
+	for ground in ground_items:
+		if point.distance_to(ground.position) < 20:
+			combat.select_target(null)
+			if not pickup_item(ground):
+				pending_pickup = ground
+				player.move_to(ground.position)
+			return
 	for target in targets:
 		if not target.dead and point.distance_to(target.position + Vector2(0,-16)) < 24:
 			combat.select_target(target)
@@ -273,6 +339,13 @@ func set_destination(point: Vector2) -> void:
 	queue_redraw()
 
 func _process(delta: float) -> void:
+	save_tick += delta
+	if save_tick >= 30:
+		save_tick = 0
+		App.save_character()
+	if is_instance_valid(pending_pickup) and player.position.distance_to(pending_pickup.position) <= 48:
+		pickup_item(pending_pickup)
+		pending_pickup = null
 	message_left -= delta
 	if message_left <= 0:
 		message_label.text = ""

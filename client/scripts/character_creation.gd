@@ -2,6 +2,7 @@ extends Control
 
 signal character_created(player_name: String, class_id: String)
 signal canceled
+signal saved_selected(character: Dictionary)
 
 var name_input := LineEdit.new()
 var class_select := OptionButton.new()
@@ -52,6 +53,15 @@ func _ready() -> void:
 	back.text = "Volver"
 	back.pressed.connect(func(): canceled.emit())
 	row.add_child(back)
+	var load_button := Button.new()
+	load_button.text = "Cargar nombre"
+	load_button.pressed.connect(func():
+		var saved := EterSave.load_character("user://characters/%s.json" % name_input.text.strip_edges()) if EterCharacter.valid_name(name_input.text.strip_edges()) else {}
+		if saved.is_empty():
+			error.text = "No hay guardado válido con ese nombre."
+		else:
+			saved_selected.emit(saved))
+	row.add_child(load_button)
 	preview.position = Vector2(130, 180)
 	preview.scale = Vector2(3, 3)
 	preview.hframes = 4
@@ -72,5 +82,8 @@ func submit() -> void:
 	var value := name_input.text.strip_edges()
 	if not EterCharacter.valid_name(value):
 		error.text = "Usá 3–16 letras, números o guión bajo."
+		return
+	if App.persistence_enabled and FileAccess.file_exists("user://characters/%s.json" % value):
+		error.text = "Nombre guardado. Usá Cargar nombre."
 		return
 	character_created.emit(value, class_ids[class_select.selected])

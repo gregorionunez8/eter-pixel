@@ -108,7 +108,7 @@ func show_menu() -> void:
 	logo.modulate = Color("64c8cf")
 	buttons.add_child(logo)
 	buttons.add_child(make_label("El último refugio de la niebla", 12))
-	for entry in [["Play", "Jugar", start_game], ["Settings", "Configuración", show_settings], ["Exit", "Salir", exit_game]]:
+	for entry in [["Play", "Jugar", start_game], ["Continue", "Continuar último", continue_game], ["Settings", "Configuración", show_settings], ["Exit", "Salir", exit_game]]:
 		var button := Button.new()
 		button.name = entry[0]
 		button.text = entry[1]
@@ -149,6 +149,7 @@ func start_game() -> void:
 	creation = Control.new()
 	creation.set_script(preload("res://scripts/character_creation.gd"))
 	creation.character_created.connect(enter_world)
+	creation.saved_selected.connect(load_selected)
 	creation.canceled.connect(func(): creation.queue_free(); show_menu())
 	add_child(creation)
 
@@ -159,12 +160,30 @@ func enter_world(player_name: String, class_id: String) -> void:
 		return
 	App.player_name = player_name
 	App.class_id = class_id
+	open_world()
+
+func continue_game() -> void:
+	var saved := EterSave.load_character()
+	if saved.is_empty():
+		status.text = "No hay guardado local válido"
+		return
+	load_selected(saved)
+
+func load_selected(saved: Dictionary) -> void:
+	App.character = saved
+	App.player_name = saved.name
+	App.class_id = saved.class_id
+	open_world()
+
+func open_world() -> void:
+	App.active_character = true
 	if is_instance_valid(menu):
 		menu.queue_free()
 	if is_instance_valid(creation):
 		creation.queue_free()
 	world = preload("res://scenes/world.tscn").instantiate()
 	add_child(world)
+	App.save_character()
 
 func exit_game() -> void:
 	get_tree().quit()
