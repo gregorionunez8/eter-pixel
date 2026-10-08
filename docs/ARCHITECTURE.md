@@ -16,9 +16,11 @@ Cliente: autoload App para configuración, recursos y registro; Main para flujo 
 
 Movimiento: AStarGrid2D sobre tiles 32x32 con diagonales sin atravesar esquinas. Cuerpo CharacterBody2D y obstáculos StaticBody2D; navegación y física deben compartir las mismas huellas. Cámara sobre el actor, objetos con Y-sorting.
 
-Backend previsto: tick fijo autoritativo, comandos validados, snapshots WebSocket y repositorio transaccional PostgreSQL. Es una decisión de diseño; aún no existe implementación del backend.
+Backend implementado: tick autoritativo, comandos validados, snapshots WebSocket y repositorio transaccional PostgreSQL. La conexión al mundo visual Godot sigue pendiente.
 
-Personajes: shared/classes.json contiene atributos y coeficientes; sync-data.mjs copia sólo el recurso empaquetado al cliente. EterCharacter valida nombres/clases, crea estado independiente y calcula estadísticas. App retiene el personaje activo en memoria. El backend deberá reutilizar los datos y comprobar equivalencia de fórmulas; aún no existe guardado de personaje ni autenticación.
+Personajes: shared/classes.json contiene atributos y coeficientes; sync-data.mjs copia sólo el recurso empaquetado al cliente. EterCharacter valida nombres/clases, crea estado independiente y calcula estadísticas. App retiene el personaje activo local en memoria. Backend reutiliza catálogos y verifica fórmulas; autentica cuentas y guarda personajes SQL. Guardado local y SQL permanecen separados.
+
+Transporte EterNetwork: Node explícito con WebSocketPeer, correlación de respuestas por id, señales snapshot/self, solicitudes con timeout y cierre que resuelve pendientes. No guarda credenciales ni reintenta mutaciones. Dos procesos headless Godot verificados contra SQL/WS reales; todavía sin integración visual online.
 
 Combate local: EterCombat recibe comandos de selección/cast y procesa temporizadores, validación y efectos. EterCombatRules resuelve impactos con rolls explícitos, coeficientes shared/combat.json. Targets de entrenamiento exponen estado y representación, el controlador aplica daño/respawn. Señal hit_resolved entrega evidencia del impacto; state_changed actualiza HUD. Cada habilidad valida clase, maná, cooldown, rango, vivo y línea de visión antes de consumir recursos. El servidor sustituirá esta autoridad local; no aceptar estos resultados del cliente online.
 

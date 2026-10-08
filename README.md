@@ -31,6 +31,8 @@ Cliente guarda por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: i
 
 Test cliente importa/headless y verifica movimiento, clases, combate, IA, progresión, inventario y economía. -Graphics añade input/drag reales, NPC/tiendas, mapa/chat/UI, snapshots a disco y recarga en otro proceso. Tests/capturas no guardan personajes ni configuración del usuario; fixtures en artifacts. Backend tiene59 tests: movimiento/combate/IA/progresión, dos peersWS, ownership/concurrencia, heartbeat, SQL/reinicio y cierre Windows ordenado/idempotente. [TEST_REPORT](docs/TEST_REPORT.md) distingue pruebas reales y pendientes.
 
+`./tools/test-online-transport.ps1` prueba dos procesos Godot headless conectados simultáneamente a SQL/WS reales:34 checks de autenticación, snapshots, movimiento observado y reconexión persistente. Es una prueba del transporte; el mundo visual todavía usa modo local.
+
 Recursos originales locales generados con `node tools/generate-art.mjs`; geometría original compartida con `node tools/generate-world.mjs`; `node tools/sync-data.mjs` sincroniza catálogos (runner lo hace automáticamente). Sin recursos remotos durante juego. PostgreSQL viene de dependencia local, no requiere instalación global ni Docker.
 
 ## Límites actuales y continuidad
