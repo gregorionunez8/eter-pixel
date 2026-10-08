@@ -48,4 +48,27 @@ for(let d=0;d<8;d++)for(let f=0;f<4;f++){
 }actor.save(characterClass);if(characterClass==='warrior')actor.save('traveler');
 }
 const dummy=new Canvas(48,64);dummy.ellipse(24,56,18,5,P.ink,110);dummy.rect(20,22,8,34,P.ink);dummy.rect(22,23,4,31,P.copper);dummy.rect(5,26,38,8,P.ink);dummy.rect(7,28,34,4,P.wood);dummy.ellipse(24,18,9,10,P.ink);dummy.ellipse(24,18,7,8,P.gold);dummy.rect(18,15,3,2,P.ink);dummy.rect(27,15,3,2,P.ink);dummy.rect(23,20,2,3,P.copper);dummy.rect(15,25,18,20,P.ink);dummy.rect(17,27,14,16,'#927e50');dummy.rect(18,31,12,2,P.wood);dummy.rect(23,27,2,16,P.copper);dummy.save('training');
-console.log('Generated 12 original PNG assets, including three class sheets and training effigy');
+for(const id of ['spider','goblin','wolf','skeleton','orc','guardian']){
+ const animal=id==='spider'||id==='wolf',w=animal||id==='guardian'?64:48,h=animal?48:id==='guardian'?80:64,c=new Canvas(w*4,h);
+ for(let f=0;f<4;f++){
+  const x=f*w+w/2,y=h-12,b=f===2?-1:0,s=f===1?2:f===3?-2:0;
+  c.ellipse(x,y+4,w/3,5,P.ink,110);
+  if(id==='spider'){
+   for(let leg=0;leg<4;leg++){const yy=y-18+leg*5;c.line(x-9,yy,x-25,yy-5+s,P.ink);c.line(x-25,yy-5+s,x-29,yy+7+s,P.copper);c.line(x+9,yy,x+25,yy-5-s,P.ink);c.line(x+25,yy-5-s,x+29,yy+7-s,P.copper);}
+   c.ellipse(x,y-12+b,13,15,P.ink);c.ellipse(x,y-15+b,10,12,'#584660');c.ellipse(x-3,y-18+b,4,7,'#7e607f');c.ellipse(x,y+b,8,7,P.ink);c.rect(x-5,y-3+b,3,2,'#da6358');c.rect(x+2,y-3+b,3,2,'#da6358');c.rect(x-3,y+3+b,2,3,P.light);c.rect(x+2,y+3+b,2,3,P.light);
+  }else if(id==='wolf'){
+   for(const lx of [-14,-5,7,16]){c.rect(x+lx,y-7,4,12+(lx<0?s:-s),P.ink);c.rect(x+lx+1,y-6,2,9,'#5b6577');}
+   c.line(x-18,y-12,x-28,y-22+s,P.light);c.ellipse(x-3,y-14+b,20,11,P.ink);c.ellipse(x-4,y-16+b,17,8,'#5b6577');c.ellipse(x+15,y-20+b,9,10,P.ink);c.ellipse(x+15,y-20+b,7,8,P.light);c.rect(x+9,y-33+b,4,8,P.ink);c.rect(x+18,y-33+b,4,8,P.ink);c.rect(x+18,y-22+b,3,2,P.ether);c.rect(x+18,y-16+b,9,5,P.ink);c.rect(x+19,y-15+b,6,2,P.light);
+  }else{
+   const body=id==='skeleton'?'#c5c3ac':id==='orc'?'#60714e':id==='goblin'?'#74865c':'#383449';const light=id==='guardian'?'#736389':id==='skeleton'?'#efdfba':'#91a06d';const size=id==='guardian'?11:id==='orc'?10:7;
+   c.rect(x-size,y-19+b,size*2,20,P.ink);c.rect(x-size+2,y-18+b,size*2-4,16,body);c.rect(x-size+3,y-17+b,3,12,light);c.rect(x-size,y,6,7+s,P.ink);c.rect(x+size-6,y,6,7-s,P.ink);
+   c.rect(x-size-5,y-21+b+s,5,18,P.ink);c.rect(x+size,y-21+b-s,5,18,P.ink);c.rect(x-size-4,y-19+b+s,3,12,body);c.rect(x+size+1,y-19+b-s,3,12,body);
+   c.ellipse(x,y-30+b,size+1,11,P.ink);c.ellipse(x,y-31+b,size-1,8,body);c.rect(x-5,y-30+b,3,3,P.ink);c.rect(x+2,y-30+b,3,3,P.ink);c.rect(x-3,y-24+b,6,2,P.ink);
+   if(id==='goblin'){c.line(x-7,y-33+b,x-15,y-37+b,light);c.line(x+7,y-33+b,x+15,y-37+b,light);c.line(x+14,y-9,x+17,y-27,P.light);}
+   if(id==='skeleton'){for(let yy=y-17;yy<y-4;yy+=4)c.rect(x-5,yy,10,1,light);c.rect(x-1,y-20,2,22,P.wood);c.line(x+13,y-5,x+13,y-32,P.light);}
+   if(id==='orc'){c.rect(x-10,y-22,20,5,P.stone);c.rect(x-7,y-24,4,5,P.light);c.rect(x+4,y-24,4,5,P.light);c.rect(x+15,y-25,3,27,P.wood);c.ellipse(x+16,y-28,6,6,P.stone);}
+   if(id==='guardian'){c.rect(x-12,y-40+b,24,10,P.ink);c.rect(x-11,y-38+b,22,7,'#454354');c.rect(x-7,y-30+b,14,2,P.ether);c.line(x-11,y-36,x-17,y-47,P.gold);c.line(x+11,y-36,x+17,y-47,P.gold);c.rect(x-12,y-21,24,4,light);c.rect(x-8,y-5,16,9,'#45344b');c.rect(x+17,y-39,3,45,P.wood);c.rect(x+11,y-39,13,12,P.light);c.rect(x+15,y-37,7,8,P.stone);}
+  }
+ }c.save(id);
+}
+console.log('Generated 18 original PNG assets, including six animated enemy species');

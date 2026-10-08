@@ -14,4 +14,6 @@ Combate local: EterCombat recibe comandos de selección/cast y procesa temporiza
 
 Input: coordenadas de InputEvent transformadas con get_global_transform_with_canvas().affine_inverse(), almacenadas para destino continuo. GUI recibe primero eventos y sólo gameplay no consumido llega a _unhandled_input. Pruebas gráficas usan Viewport.push_input con coordenadas locales y proceso real. Referencia: https://docs.godotengine.org/en/stable/classes/class_viewport.html
 
+Catalog autoload contiene el cache de JSON empaquetados y se registra antes de App. Las funciones estáticas de reglas no almacenan variables estáticas; evita retención de recursos observada en importación. EterMonster hereda de la base CharacterBody2D de objetivos, tiene su propio tick de IA/física y usa el controlador de combate como Node para resolver daño. EterCombat emite target_defeated una vez; daño a cadáver se rechaza. Los estados de IA y temporizadores son locales por ahora.
+
 Referencia de escalado: https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html

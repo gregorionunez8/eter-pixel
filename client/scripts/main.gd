@@ -7,6 +7,15 @@ var creation: Control
 
 func _ready() -> void:
 	show_menu()
+	if "--capture-monsters" in OS.get_cmdline_user_args():
+		enter_world("Acero", "warrior")
+		world.player.position = Vector2(38 * 32 + 16, 24 * 32 + 16)
+		await get_tree().create_timer(0.2).timeout
+		await RenderingServer.frame_post_draw
+		var result: int = get_viewport().get_texture().get_image().save_png("res://../artifacts/monsters.png")
+		assert(result == OK)
+		print("PASS rendered monsters capture")
+		get_tree().quit()
 	if "--capture-combat" in OS.get_cmdline_user_args():
 		enter_world("Bruma", "mage")
 		world.combat.random.seed = 1909

@@ -1,14 +1,8 @@
 class_name EterCombatRules
 extends RefCounted
 
-static var data: Dictionary = {}
-
 static func definitions() -> Dictionary:
-	if data.is_empty():
-		var file := FileAccess.open("res://data/combat.json", FileAccess.READ)
-		if file:
-			data = JSON.parse_string(file.get_as_text())
-	return data
+	return Catalog.read("combat")
 
 static func hit(attack: Dictionary, defense: Dictionary, damage_type: String, multiplier: float, accuracy_roll: float, critical_roll: float) -> Dictionary:
 	var rules := definitions()

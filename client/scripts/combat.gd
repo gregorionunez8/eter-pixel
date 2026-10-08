@@ -4,6 +4,7 @@ extends Node
 signal state_changed
 signal feedback(message: String)
 signal hit_resolved(target: Node2D, result: Dictionary)
+signal target_defeated(target: EterTrainingTarget)
 
 var player: EterPlayer
 var world: Node2D
@@ -62,6 +63,8 @@ func damage_label(point: Vector2, hit_result: Dictionary) -> void:
 	tween.chain().tween_callback(label.queue_free)
 
 func damage_target(target: EterTrainingTarget, multiplier: float, damage_type: String, effect: String) -> void:
+	if target.dead:
+		return
 	var hit_result := EterCombatRules.hit(App.character.stats, target.state.stats, damage_type, multiplier, random.randf(), random.randf())
 	target.state.hp = maxi(0, target.state.hp - int(hit_result.damage))
 	damage_label(target.position, hit_result)
@@ -71,6 +74,11 @@ func damage_target(target: EterTrainingTarget, multiplier: float, damage_type: S
 		target.respawn_left = EterCombatRules.definitions().target_respawn_seconds
 		if selected == target:
 			select_target(null)
+		if target.has_method("on_defeated"):
+			target.on_defeated()
+		target_defeated.emit(target)
+	elif hit_result.damage > 0 and target.has_method("on_hit"):
+		target.on_hit()
 	target.refresh()
 	hit_resolved.emit(target, hit_result)
 	state_changed.emit()
@@ -140,6 +148,8 @@ func _physics_process(delta: float) -> void:
 	for key in cooldowns:
 		cooldowns[key] = maxf(0, float(cooldowns[key]) - delta)
 	for target in targets:
+		if target is EterMonster:
+			continue
 		if target.dead:
 			target.respawn_left -= delta
 			if target.respawn_left <= 0:

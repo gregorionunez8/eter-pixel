@@ -1,14 +1,8 @@
 class_name EterCharacter
 extends RefCounted
 
-static var data: Dictionary = {}
-
 static func definitions() -> Dictionary:
-	if data.is_empty():
-		var file := FileAccess.open("res://data/classes.json", FileAccess.READ)
-		if file:
-			data = JSON.parse_string(file.get_as_text())
-	return data
+	return Catalog.read("classes")
 
 static func valid_name(value: String) -> bool:
 	var rules := definitions()

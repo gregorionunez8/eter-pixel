@@ -1,0 +1,10 @@
+{
+  "species": {
+    "spider": {"name":"Araña de bruma","level":1,"hp":65,"attack":12,"defense":2,"experience":24,"speed":78,"detect_radius":144,"leash_radius":260,"attack_range":28,"attack_interval":1.2,"respawn":6,"radius":7,"accuracy":75,"evasion":4,"loot":{"gold_min":3,"gold_max":8,"chance":0.8}},
+    "goblin": {"name":"Goblin ceniciento","level":2,"hp":95,"attack":18,"defense":4,"experience":38,"speed":90,"detect_radius":152,"leash_radius":280,"attack_range":34,"attack_interval":1.1,"respawn":7,"radius":7,"accuracy":78,"evasion":6,"loot":{"gold_min":6,"gold_max":14,"chance":0.8}},
+    "wolf": {"name":"Lobo umbrío","level":3,"hp":120,"attack":23,"defense":5,"experience":52,"speed":126,"detect_radius":176,"leash_radius":320,"attack_range":32,"attack_interval":0.9,"respawn":8,"radius":8,"accuracy":82,"evasion":9,"loot":{"gold_min":8,"gold_max":20,"chance":0.8}},
+    "skeleton": {"name":"Esqueleto del pacto","level":4,"hp":160,"attack":28,"defense":9,"experience":75,"speed":84,"detect_radius":160,"leash_radius":280,"attack_range":36,"attack_interval":1.2,"respawn":9,"radius":7,"accuracy":84,"evasion":5,"loot":{"gold_min":12,"gold_max":28,"chance":0.85}},
+    "orc": {"name":"Orco de hierro","level":6,"hp":260,"attack":38,"defense":15,"experience":120,"speed":72,"detect_radius":160,"leash_radius":280,"attack_range":42,"attack_interval":1.5,"respawn":12,"radius":10,"accuracy":88,"evasion":4,"loot":{"gold_min":20,"gold_max":45,"chance":0.9}},
+    "guardian": {"name":"Guardián oscuro","level":10,"hp":600,"attack":58,"defense":24,"experience":320,"speed":80,"detect_radius":192,"leash_radius":352,"attack_range":48,"attack_interval":1.4,"respawn":20,"radius":11,"accuracy":94,"evasion":8,"loot":{"gold_min":65,"gold_max":110,"chance":1}}
+  }
+}

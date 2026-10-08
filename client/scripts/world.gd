@@ -54,6 +54,15 @@ func _ready() -> void:
 		targets.append(target)
 	combat.setup(self, player, targets)
 	add_child(combat)
+	for entry in [["spider",39,23],["goblin",42,21],["wolf",39,26],["skeleton",44,23],["orc",42,27],["guardian",45,27]]:
+		var monster := EterMonster.new()
+		monster.species_id = entry[0]
+		monster.position = Vector2(entry[1] * TILE + 16, entry[2] * TILE + 16)
+		monster.navigation = navigation
+		monster.player = player
+		monster.combat = combat
+		entities.add_child(monster)
+		targets.append(monster)
 	combat.state_changed.connect(update_resources)
 	combat.feedback.connect(func(message: String): message_label.text = message; message_left = 2.5)
 	build_hud()
@@ -224,6 +233,7 @@ func _draw() -> void:
 				tile = 2
 			draw_texture_rect_region(terrain, Rect2(x * TILE, y * TILE, TILE, TILE), Rect2(tile * TILE, 0, TILE, TILE))
 	draw_string(ThemeDB.fallback_font, Vector2(666, 951), "BOSQUE DE LAS SOMBRAS  ↓", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("d5aa64"))
+	draw_string(ThemeDB.fallback_font, Vector2(1170, 651), "CERCADO DE LA NIEBLA", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("d5aa64"))
 	if marker.x >= 0:
 		draw_arc(marker, 8, 0, TAU, 12, Color("64c8cf"), 1)
 		draw_line(marker + Vector2(-12, 0), marker + Vector2(12, 0), Color("64c8cf"))

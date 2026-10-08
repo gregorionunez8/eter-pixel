@@ -1,5 +1,5 @@
 class_name EterTrainingTarget
-extends Node2D
+extends CharacterBody2D
 
 var state: Dictionary = {}
 var dead := false
@@ -8,20 +8,31 @@ var attack_left := 0.0
 var sprite := Sprite2D.new()
 var bar := ProgressBar.new()
 var selected := false
+var name_label := Label.new()
+
+func initial_state() -> Dictionary:
+	return EterCombatRules.definitions().training_target.duplicate(true)
 
 func _ready() -> void:
-	state = EterCombatRules.definitions().training_target.duplicate(true)
+	state = initial_state()
 	sprite.texture = load("res://assets/training.png")
 	sprite.position = Vector2(0, -18)
 	add_child(sprite)
 	bar.position = Vector2(-18, -49)
 	bar.size = Vector2(36, 5)
 	bar.show_percentage = false
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("111522")
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color("a55b4d")
+	bar.add_theme_stylebox_override("background", background)
+	bar.add_theme_stylebox_override("fill", fill)
+	bar.size = Vector2(36, 5)
 	bar.max_value = state.stats.max_hp
 	bar.value = state.hp
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bar)
-	var label := Label.new()
+	var label := name_label
 	label.text = "Efigie"
 	label.position = Vector2(-28, -64)
 	label.size.x = 56
