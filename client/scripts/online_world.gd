@@ -6,6 +6,7 @@ var enemies: Dictionary = {}
 var grounds: Dictionary = {}
 var event_sequence := 0
 var inventory_signature := ""
+var chat_sequence := 0
 
 func _ready() -> void:
 	for target in world.targets:
@@ -14,6 +15,9 @@ func _ready() -> void:
 	App.network.self_received.connect(apply_self)
 	App.network.disconnected.connect(connection_lost)
 	App.intent_failed.connect(show_error)
+	App.network.chat_received.connect(receive_chat)
+	world.chat_ui.connected = App.network.was_open
+	world.chat_ui.submitted.connect(func(channel: String,message: String): App.send_intent("chat",{"channel":channel,"message":message}))
 	entered({"state":App.character.duplicate(true),"world":App.network.latest_world})
 
 func show_error(message: String) -> void:
@@ -21,12 +25,22 @@ func show_error(message: String) -> void:
 	world.message_left = 5
 
 func connection_lost() -> void:
+	world.chat_ui.connected = false
+	chat_sequence = 0
+	world.social_ui.hide()
 	world.held = false
 	world.pending_pickup = null
 	world.pending_npc = null
 	show_error(App.error_message("disconnected"))
 
+func receive_chat(message: Dictionary) -> void:
+	if int(message.sequence) <= chat_sequence: return
+	chat_sequence = int(message.sequence)
+	world.chat_ui.append_message("%s · %s" % ["Global" if message.channel == "global" else "Local",message.sender],message.message)
+
 func entered(data: Dictionary) -> void:
+	world.message_label.text = ""
+	world.message_left = 0
 	event_sequence = 0
 	for event in data.get("world",{}).get("events",[]):
 		event_sequence = maxi(event_sequence,int(event.sequence))
@@ -46,6 +60,8 @@ func apply_self(data: Dictionary) -> void:
 	world.player.dead = App.character.hp <= 0
 	world.combat.cooldowns = data.get("cooldowns",{}).duplicate()
 	world.update_resources()
+	world.chat_ui.connected = App.network.was_open
+	world.social_ui.refresh(data.get("social",{}))
 	var signature := JSON.stringify([App.character.inventory,App.character.gold])
 	if signature != inventory_signature:
 		inventory_signature = signature

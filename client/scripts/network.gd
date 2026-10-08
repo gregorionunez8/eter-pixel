@@ -5,6 +5,7 @@ signal connected
 signal disconnected
 signal snapshot_received(state: Dictionary)
 signal self_received(state: Dictionary)
+signal chat_received(message: Dictionary)
 
 var peer := WebSocketPeer.new()
 var latest_world: Dictionary = {}
@@ -63,6 +64,8 @@ func receive(value: Variant) -> void:
 		elif value.get("event") == "self":
 			latest_self = value.data
 			self_received.emit(latest_self)
+		elif value.get("event") == "chat":
+			chat_received.emit(value.data)
 
 # Never resend a timed-out mutation: its SQL commit may already have succeeded.
 func request(operation: String, data: Dictionary = {}, timeout_ms: int = 10000) -> Dictionary:

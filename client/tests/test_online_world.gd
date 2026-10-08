@@ -141,6 +141,73 @@ func run() -> void:
 	if reply.get("ok",false): world.online_world.entered(reply.data)
 	await wait_until(func(): return world.combat.cooldowns.get(skill_id,0)>0,"cooldown survives visual reconnect")
 	check(world.player.position.distance_to(Vector2(784,848) if role==0 else Vector2(752,848))<2,"position retained after reconnect")
+	await wait_until(func(): return world.social_ui.roster_ids.size()==1,"connected roster includes second player")
+	world.chat_ui.open()
+	world.chat_ui.send("[b]literal_%d[/b]" % role)
+	await wait_until(func(): return "literal_%d" % (1-role) in world.chat_ui.history.get_parsed_text(),"real global chat delivered to other Godot")
+	check("[b]literal_" in world.chat_ui.history.get_parsed_text(),"chat markup remains literal")
+	await get_tree().create_timer(0.55).timeout
+	world.chat_ui.channel.select(1)
+	world.chat_ui.send("cerca_%d" % role)
+	await wait_until(func(): return "cerca_%d" % (1-role) in world.chat_ui.history.get_parsed_text(),"local chat delivered to nearby Godot")
+	check("Local ·" in world.chat_ui.history.get_parsed_text(),"local channel displayed")
+	world.chat_ui.hide(); world.chat_ui.input.release_focus()
+	world.toggle_social()
+	world.social_ui.roster.select(0)
+	if role==0:
+		world.social_ui.invite("party_invite")
+	else:
+		await wait_until(func(): return world.social_ui.state.get("invitation") is Dictionary,"party invitation appears")
+		await click(world.social_ui.accept_party.get_global_rect().get_center())
+	await wait_until(func(): return world.social_ui.state.get("party") is Dictionary and world.social_ui.state.party.members.size()==2,"both consent to party")
+	if role==0:
+		world.social_ui.roster.select(0)
+		world.social_ui.invite("trade_invite")
+	else:
+		await wait_until(func(): return world.social_ui.state.get("trade") is Dictionary,"trade invitation appears")
+		await click(world.social_ui.confirm_button.get_global_rect().get_center())
+	await wait_until(func(): return world.social_ui.state.get("trade") is Dictionary and world.social_ui.state.trade.phase=="open","both see open trade")
+	var social: Control = world.social_ui
+	if role==0:
+		for index in range(social.item_ids.size()):
+			if EterInventory.find(App.character.inventory,social.item_ids[index]).definition=="robe": social.mine.select(index)
+		social.gold.value=10
+		await click(social.offer_button.get_global_rect().get_center())
+	else:
+		await wait_until(func():
+			for entry in social.state.trade.offers:
+				if entry.id!=App.online_character_id and entry.items.size()==1: return true
+			return false,"other offer is visible before submitting")
+		for index in range(social.item_ids.size()):
+			if EterInventory.find(App.character.inventory,social.item_ids[index]).definition=="potion": social.mine.select(index)
+		social.gold.value=5
+		await click(social.offer_button.get_global_rect().get_center())
+	await wait_until(func():
+		if not social.state.get("trade") is Dictionary: return false
+		for entry in social.state.trade.offers:
+			if entry.items.size()!=1: return false
+		return true,"both offers reviewed before confirmation")
+	check(social.theirs.get_item_text(0).contains("×3" if role==0 else "×1"),"full stack quantity visible before confirming")
+	if graphics:
+		await RenderingServer.frame_post_draw
+		check(get_tree().root.get_texture().get_image().save_png("res://../artifacts/online-trade-%d.png" % role)==OK,"trade UI captured")
+	if role==0:
+		await click(social.confirm_button.get_global_rect().get_center())
+	else:
+		await wait_until(func(): return social.state.get("trade") is Dictionary and social.state.trade.accepted.size()==1,"first confirmation visible")
+		await click(social.confirm_button.get_global_rect().get_center())
+	await wait_until(func(): return not social.state.get("trade") is Dictionary,"SQL exchange completes for both clients")
+	if role==0:
+		var potion_count:=0
+		for item in App.character.inventory.items:
+			if item.definition=="potion": potion_count+=int(item.count)
+		check(potion_count==6 and App.character.gold==935,"trade conserves stacked potions and gold")
+	else:
+		var received_robe:=false
+		for item in App.character.inventory.items:
+			if item.definition=="robe": received_robe=true
+		check(received_robe and App.character.gold==1005,"trade receives server UID and gold")
+	social.hide()
 	var spider: EterTrainingTarget = world.targets[3]
 	if role == 0:
 		world.handle_primary(spider.position+Vector2(0,-16))

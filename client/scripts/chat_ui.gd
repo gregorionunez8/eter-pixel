@@ -32,7 +32,7 @@ func _ready() -> void:
 	input.placeholder_text = "Enter: enviar · Esc: cerrar"
 	input.text_submitted.connect(send)
 	add_child(input)
-	append_message("Sistema","Sin conexión. Chat requiere servidor.")
+	append_message("Sistema","Chat global/local conectado." if App.online else "Sin conexión. Chat requiere servidor.")
 	hide()
 
 func append_message(sender: String, message: String) -> void:

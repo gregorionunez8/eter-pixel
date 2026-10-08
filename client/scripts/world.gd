@@ -42,6 +42,7 @@ var health_bar := ProgressBar.new()
 var mana_bar := ProgressBar.new()
 var experience_bar := ProgressBar.new()
 var online_world: Node
+var social_ui: Control
 
 func _ready() -> void:
 	economy_random.randomize()
@@ -253,6 +254,16 @@ func build_hud() -> void:
 	chat_ui = Panel.new()
 	chat_ui.set_script(preload("res://scripts/chat_ui.gd"))
 	hud.add_child(chat_ui)
+	if App.online:
+		social_ui = preload("res://scripts/social_ui.gd").new()
+		hud.add_child(social_ui)
+		var social_button := Button.new()
+		social_button.text = "P: jugadores"
+		social_button.position = Vector2(528,80)
+		social_button.size = Vector2(96,24)
+		social_button.add_theme_font_size_override("font_size",10)
+		social_button.pressed.connect(toggle_social)
+		hud.add_child(social_button)
 	var colors := [Color("b94c4c"),Color("487dbc"),Color("d5aa64")]
 	var bars := [health_bar,mana_bar,experience_bar]
 	for index in range(bars.size()):
@@ -273,15 +284,24 @@ func build_hud() -> void:
 	update_resources()
 
 func toggle_map() -> void:
+	if is_instance_valid(social_ui): social_ui.hide()
 	map_panel.visible = not map_panel.visible
 	inventory_ui.hide()
 	character_panel.hide()
 	shop_ui.hide()
 	held = false
 
+func toggle_social() -> void:
+	if not App.online: return
+	chat_ui.hide(); chat_ui.input.release_focus()
+	inventory_ui.hide(); character_panel.hide(); shop_ui.hide(); map_panel.hide()
+	social_ui.toggle()
+	held = false
+
 func open_shop(npc: Node2D) -> void:
 	if player.dead or player.position.distance_to(npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(npc.position): return
 	active_npc = npc
+	if is_instance_valid(social_ui): social_ui.hide()
 	shop_ui.shop_id = npc.shop_id
 	shop_ui.refresh()
 	shop_ui.show()
@@ -459,6 +479,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if is_instance_valid(social_ui) and social_ui.visible:
+			social_ui.hide()
+			return
 		if map_panel.visible:
 			map_panel.hide()
 			return
@@ -470,20 +493,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if pause_menu.visible:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_P:
+		toggle_social()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		toggle_map()
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ENTER:
+		if is_instance_valid(social_ui): social_ui.hide()
 		chat_ui.open()
 		held = false
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
+		if is_instance_valid(social_ui): social_ui.hide()
 		shop_ui.hide()
 		map_panel.hide()
 		character_panel.visible = not character_panel.visible
 		inventory_ui.hide()
 		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+		if is_instance_valid(social_ui): social_ui.hide()
 		shop_ui.hide()
 		map_panel.hide()
 		inventory_ui.visible = not inventory_ui.visible
