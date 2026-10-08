@@ -1,6 +1,7 @@
 client/.godot/
 node_modules/
 server/dist/
+server/.local/
 .env
 artifacts/
 tools/vendor/
