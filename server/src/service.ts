@@ -167,6 +167,7 @@ export async function startService(
               data: {
                 state: actor.state,
                 cooldowns: world.combat.battles.get(id)?.cooldowns ?? {},
+                social: world.social.snapshot(id),
               },
             }),
           );
@@ -200,6 +201,7 @@ export async function startService(
           const actor = world.players.get(characterId);
           if (!actor) return;
           actor.path = [];
+          world.social.remove(characterId);
           world.combat.remove(characterId);
           leaving.add(characterId);
           try {
@@ -252,6 +254,104 @@ export async function startService(
             } else {
               if (!account) throw new Rejected("unauthenticated");
               switch (request.op) {
+                case "chat": {
+                  fields(data, ["channel", "message"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  const delivery = world.social.chat(
+                    characterId,
+                    data.channel,
+                    data.message,
+                  );
+                  for (const [peer, id] of entered)
+                    if (
+                      delivery.recipients.includes(id) &&
+                      peer.readyState === WebSocket.OPEN
+                    )
+                      peer.send(
+                        JSON.stringify({
+                          v: 1,
+                          event: "chat",
+                          data: delivery.message,
+                        }),
+                      );
+                  result = { sent: true };
+                  break;
+                }
+                case "party_invite":
+                case "trade_invite":
+                  fields(data, ["target_id"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (request.op === "party_invite")
+                    world.social.inviteParty(
+                      characterId,
+                      data.target_id as string,
+                    );
+                  else
+                    world.social.inviteTrade(
+                      characterId,
+                      data.target_id as string,
+                    );
+                  result = { accepted: true };
+                  break;
+                case "party_reply":
+                case "trade_reply":
+                  if (
+                    Object.keys(data).length !== 1 ||
+                    typeof data.accept !== "boolean"
+                  )
+                    throw new Rejected("bad_request");
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (request.op === "party_reply")
+                    world.social.replyParty(characterId, data.accept);
+                  else world.social.replyTrade(characterId, data.accept);
+                  result = { accepted: true };
+                  break;
+                case "party_leave":
+                case "trade_cancel":
+                  fields(data, []);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  if (request.op === "party_leave")
+                    world.social.leaveParty(characterId);
+                  else world.social.cancel(characterId);
+                  result = { accepted: true };
+                  break;
+                case "trade_offer":
+                  if (
+                    Object.keys(data).length !== 3 ||
+                    !Array.isArray(data.uids) ||
+                    typeof data.gold !== "number" ||
+                    typeof data.revision !== "number"
+                  )
+                    throw new Rejected("bad_request");
+                  if (!characterId) throw new Rejected("not_in_world");
+                  world.social.offer(
+                    characterId,
+                    data.uids,
+                    data.gold,
+                    data.revision,
+                  );
+                  result = { accepted: true };
+                  break;
+                case "trade_accept": {
+                  if (
+                    Object.keys(data).length !== 1 ||
+                    typeof data.revision !== "number"
+                  )
+                    throw new Rejected("bad_request");
+                  if (!characterId) throw new Rejected("not_in_world");
+                  const acceptance = world.social.accept(
+                    characterId,
+                    data.revision,
+                  );
+                  if (acceptance.ready) {
+                    await commitAction(() =>
+                      world.social.exchange(acceptance.trade_id),
+                    );
+                    world.social.complete(acceptance.trade_id);
+                  }
+                  result = { completed: acceptance.ready };
+                  break;
+                }
                 case "characters":
                   fields(data, []);
                   result = await store.list(account);

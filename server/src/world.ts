@@ -3,6 +3,7 @@ import { Navigation, geometry, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
 import { CombatSimulation } from "./combat.js";
 import { WorldEconomy } from "./economy.js";
+import { Social } from "./social.js";
 type Actor = {
   id: string;
   account: string;
@@ -16,6 +17,7 @@ export class AuthoritativeWorld {
   readonly players = new Map<string, Actor>();
   readonly combat: CombatSimulation;
   readonly economy: WorldEconomy;
+  readonly social: Social;
   tick = 0;
   constructor(
     random: () => number = Math.random,
@@ -23,6 +25,7 @@ export class AuthoritativeWorld {
   ) {
     this.combat = new CombatSimulation(this, random);
     this.economy = new WorldEconomy(this, lootRandom);
+    this.social = new Social(this);
   }
   join(
     account: string,
@@ -43,6 +46,7 @@ export class AuthoritativeWorld {
     };
     this.players.set(actor.id, actor);
     this.combat.join(actor.id);
+    this.social.join(actor.id);
     return actor;
   }
   move(id: string, destination: Point, manual = true) {
@@ -115,6 +119,7 @@ export class AuthoritativeWorld {
     }
     this.combat.step(delta);
     this.economy.expire();
+    this.social.reconcile();
   }
   snapshot() {
     return {
@@ -136,6 +141,7 @@ export class AuthoritativeWorld {
     };
   }
   remove(id: string) {
+    this.social.remove(id);
     const actor = this.players.get(id);
     this.players.delete(id);
     this.combat.remove(id);
