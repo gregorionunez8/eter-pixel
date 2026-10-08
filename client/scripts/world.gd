@@ -21,6 +21,11 @@ var resource_label := Label.new()
 var message_label := Label.new()
 var message_left := 0.0
 var skill_buttons: Array[Button] = []
+var experience_label := Label.new()
+var character_panel := PanelContainer.new()
+var character_summary := Label.new()
+var attribute_labels: Dictionary = {}
+var allocation_buttons: Dictionary = {}
 
 func _ready() -> void:
 	terrain = load("res://assets/terrain.png")
@@ -64,6 +69,7 @@ func _ready() -> void:
 		entities.add_child(monster)
 		targets.append(monster)
 	combat.state_changed.connect(update_resources)
+	combat.target_defeated.connect(reward_monster)
 	combat.feedback.connect(func(message: String): message_label.text = message; message_left = 2.5)
 	build_hud()
 	var ambient := CanvasModulate.new()
@@ -116,6 +122,11 @@ func build_hud() -> void:
 	resource_label.add_theme_font_size_override("font_size", 11)
 	resource_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(resource_label)
+	experience_label.position = Vector2(16, 44)
+	experience_label.add_theme_font_size_override("font_size", 10)
+	experience_label.modulate = Color("d5aa64")
+	experience_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(experience_label)
 	update_resources()
 	var help := Label.new()
 	help.text = "Clic: caminar/atacar · 1/2: habilidades · Esc: menú"
@@ -157,6 +168,68 @@ func build_hud() -> void:
 	leave.text = "Volver al inicio"
 	leave.pressed.connect(func(): get_tree().reload_current_scene())
 	box.add_child(leave)
+	build_character_panel()
+
+func build_character_panel() -> void:
+	character_panel.position = Vector2(360, 63)
+	character_panel.size = Vector2(264, 246)
+	character_panel.visible = false
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color("111522")
+	panel_style.border_color = Color("796654")
+	panel_style.set_border_width_all(1)
+	panel_style.set_content_margin_all(8)
+	character_panel.add_theme_stylebox_override("panel", panel_style)
+	hud.add_child(character_panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	character_panel.add_child(box)
+	character_summary.add_theme_font_size_override("font_size", 11)
+	character_summary.custom_minimum_size = Vector2(250, 94)
+	character_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(character_summary)
+	var names := {"strength":"Fuerza", "agility":"Agilidad", "vitality":"Vitalidad", "energy":"Energía"}
+	for attribute in EterCharacter.definitions().attributes:
+		var row := HBoxContainer.new()
+		box.add_child(row)
+		var label := Label.new()
+		label.custom_minimum_size.x = 208
+		label.add_theme_font_size_override("font_size", 12)
+		label.set_meta("display_name", names[attribute])
+		row.add_child(label)
+		attribute_labels[attribute] = label
+		var button := Button.new()
+		button.text = "+"
+		button.add_theme_font_size_override("font_size", 12)
+		var button_style := StyleBoxFlat.new()
+		button_style.bg_color = Color("303b49")
+		button_style.set_content_margin_all(2)
+		button.add_theme_stylebox_override("normal", button_style)
+		button.add_theme_stylebox_override("hover", button_style)
+		button.add_theme_stylebox_override("pressed", button_style)
+		button.add_theme_stylebox_override("disabled", button_style)
+		button.custom_minimum_size = Vector2(34, 24)
+		button.pressed.connect(func():
+			if EterProgression.allocate(App.character, attribute):
+				update_resources())
+		row.add_child(button)
+		allocation_buttons[attribute] = button
+	update_character_panel()
+
+func update_character_panel() -> void:
+	var character: Dictionary = App.character
+	character_summary.text = "%s · Nivel %s\nPuntos disponibles: %s\nAtaque %s · Defensa %s\nPrecisión %s · Evasión %s\nVelocidad %s · Resets %s\nC: cerrar" % [character.name, character.level, character.attribute_points, character.stats.attack, character.stats.defense, character.stats.accuracy, character.stats.evasion, character.stats.speed, character.reset_count]
+	for attribute in attribute_labels:
+		attribute_labels[attribute].text = "%s: %s" % [attribute_labels[attribute].get_meta("display_name"), int(character.attributes[attribute])]
+		allocation_buttons[attribute].disabled = character.attribute_points <= 0
+
+func reward_monster(target: EterTrainingTarget) -> void:
+	if not target is EterMonster:
+		return
+	var levels := EterProgression.gain_experience(App.character, int(target.config.experience))
+	message_label.text = "+%s XP%s" % [target.config.experience, " · ¡Nivel %s!" % App.character.level if levels > 0 else ""]
+	message_left = 3
+	update_resources()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -172,6 +245,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if pause_menu.visible:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
+		character_panel.visible = not character_panel.visible
+		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_1, KEY_2]:
 		var index := 0 if event.keycode == KEY_1 else 1
 		combat.cast(EterCombatRules.definitions().classes[App.class_id].skills[index])
@@ -213,6 +289,9 @@ func _process(delta: float) -> void:
 
 func update_resources() -> void:
 	resource_label.text = "%s · Nv %s · Vida %s/%s · Maná %s/%s" % [EterCharacter.definitions().classes[App.class_id].name, App.character.level, App.character.hp, App.character.stats.max_hp, App.character.mana, App.character.stats.max_mana]
+	experience_label.text = "XP %s/%s · Puntos %s · C: personaje" % [App.character.experience, EterProgression.required_experience(App.character.level), App.character.attribute_points]
+	if not attribute_labels.is_empty():
+		update_character_panel()
 
 func is_safe(point: Vector2, radius: float = 6.5) -> bool:
 	for rect in solid_rectangles:

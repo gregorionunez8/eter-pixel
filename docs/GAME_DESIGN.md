@@ -7,3 +7,5 @@ Guerrero: fuerza y defensa; Mago: energía y magia; Elfa: agilidad, arco y apoyo
 Control principal: clic izquierdo para desplazarse, mantener para actualizar destino; clic sobre enemigo para perseguir y autoatacar. Habilidades en barra; I inventario, C personaje, M mapa, Enter chat, Esc menú.
 
 Ciclo previsto: crear personaje, entrar a la aldea, entrenar, obtener experiencia y equipo, vender y mejorar, explorar zonas más difíciles. Se documentará qué segmentos existen efectivamente en PROGRESS.md.
+
+Progresión implementada: nivel inicial1, curva XP=floor(80*nivel^1.7), cinco puntos por nivel y cap100. Atributos a elección mediante C. Subir nivel restaura recursos, morir pierde 5% de XP parcial sin bajar nivel. Efigies sirven para practicar sin XP; sólo monstruos dan su recompensa. Resets preparados pero desactivados en esta slice. Equipo/economía todavía pendientes.

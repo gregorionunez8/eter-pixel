@@ -7,6 +7,17 @@ var creation: Control
 
 func _ready() -> void:
 	show_menu()
+	if "--capture-progression" in OS.get_cmdline_user_args():
+		enter_world("Acero", "warrior")
+		EterProgression.gain_experience(App.character, 100)
+		world.update_resources()
+		world.character_panel.show()
+		await get_tree().create_timer(0.2).timeout
+		await RenderingServer.frame_post_draw
+		var result: int = get_viewport().get_texture().get_image().save_png("res://../artifacts/progression.png")
+		assert(result == OK)
+		print("PASS rendered progression capture")
+		get_tree().quit()
 	if "--capture-monsters" in OS.get_cmdline_user_args():
 		enter_world("Acero", "warrior")
 		world.player.position = Vector2(38 * 32 + 16, 24 * 32 + 16)

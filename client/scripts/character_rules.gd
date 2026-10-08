@@ -21,6 +21,7 @@ static func create(value: String, class_id: String) -> Dictionary:
 	result["stats"] = derive(result)
 	result["hp"] = result.stats.max_hp
 	result["mana"] = result.stats.max_mana
+	result["reset_count"] = 0
 	return result
 
 static func formula(coefficients: Dictionary, attributes: Dictionary, level: int) -> int:
