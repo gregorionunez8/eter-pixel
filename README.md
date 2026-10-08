@@ -20,6 +20,8 @@ Combate local: caminar al sur hasta las tres efigies, o al este al Cercado de la
 
 I abre inventario. Arrastrá objetos para mover/equipar/desequipar; doble clic o clic derecho equipa/usa. Seleccioná equipo para Desequipar; Soltar lo deja en suelo, clic lo recoge. Equipo modifica stats, pociones curan y se apilan. Objetos del suelo desaparecen al recargar mundo.
 
+Servidor ya calcula movimiento con colisiones y envía snapshots entre dos peersWS; guarda posiciónSQL al desconectar y rechaza velocidad enviada por cliente/doble sesión. Ver docs/PROTOCOL.md. Godot aún no está conectado y combate/economía servidor siguen pendientes.
+
 Guardado local por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: al entrar, modificar inventario, cada30s y salir al menú/cerrar ventana. Continuar último carga último personaje; Jugar -> Cargar nombre abre otro guardado. Crear no sobrescribe nombres existentes. El loader rechaza archivos corruptos y deriva stats. Este guardado no es validación PostgreSQL ni autoridad online.
 
 Tests headless cubren navegación, tres clases, combate, seis IA, niveles e inventario. `-Graphics` incluye eventos de mouse/teclado y arrastre real, snapshot en artifacts y recarga en otro proceso; mueve temporalmente el cursor dentro de Godot y lo restaura. Tests/capturas no escriben guardados de usuario. Reporte completo en docs/TEST_REPORT.md.

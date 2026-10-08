@@ -47,18 +47,11 @@ func _ready() -> void:
 	terrain = load("res://assets/terrain.png")
 	entities.y_sort_enabled = true
 	add_child(entities)
-	for x in range(SIZE.x):
-		add_obstacle(Rect2i(x, 0, 1, 1), "wall")
-		if x < 21 or x > 26:
-			add_obstacle(Rect2i(x, SIZE.y - 1, 1, 1), "wall")
-	for y in range(1, SIZE.y - 1):
-		add_obstacle(Rect2i(0, y, 1, 1), "wall")
-		add_obstacle(Rect2i(SIZE.x - 1, y, 1, 1), "wall")
-	for entry in [[15, 14, "house"], [17, 7, "house"], [29, 14, "shop"], [34, 18, "smith"], [17, 23, "house"], [29, 23, "house"]]:
-		add_obstacle(Rect2i(entry[0], entry[1], 4, 3), entry[2])
-	add_obstacle(Rect2i(23, 14, 2, 2), "shrine")
-	for cell in [Vector2i(5,5),Vector2i(13,5),Vector2i(32,4),Vector2i(41,5),Vector2i(5,16),Vector2i(16,18),Vector2i(30,18),Vector2i(42,17),Vector2i(6,27),Vector2i(16,26),Vector2i(31,27),Vector2i(41,27)]:
-		add_obstacle(Rect2i(cell, Vector2i.ONE), "tree")
+	var geometry := Catalog.read("world")
+	assert(int(geometry.width) == SIZE.x and int(geometry.height) == SIZE.y and int(geometry.tile) == TILE,"Village geometry dimensions mismatch")
+	spawn_position = Vector2(geometry.spawn.x,geometry.spawn.y)
+	for entry in geometry.obstacles:
+		add_obstacle(Rect2i(int(entry.x),int(entry.y),int(entry.width),int(entry.height)),entry.texture)
 	navigation.setup(SIZE, blocked)
 	player = EterPlayer.new()
 	player.navigation = navigation
@@ -75,10 +68,10 @@ func _ready() -> void:
 		targets.append(target)
 	combat.setup(self, player, targets)
 	add_child(combat)
-	for entry in [["spider",39,23],["goblin",42,21],["wolf",39,26],["skeleton",44,23],["orc",42,27],["guardian",45,27]]:
+	for entry in geometry.monsters:
 		var monster := EterMonster.new()
-		monster.species_id = entry[0]
-		monster.position = Vector2(entry[1] * TILE + 16, entry[2] * TILE + 16)
+		monster.species_id = entry.species
+		monster.position = Vector2(entry.x,entry.y)
 		monster.navigation = navigation
 		monster.player = player
 		monster.combat = combat
@@ -92,11 +85,11 @@ func _ready() -> void:
 			EterEconomy.wear(App.character,"armor" if victim == player else "weapon")
 			App.character.stats = EterCharacter.derive(App.character))
 	build_hud()
-	for entry in [["shop",31,17],["smith",34,21]]:
+	for entry in geometry.npcs:
 		var npc := Node2D.new()
 		npc.set_script(preload("res://scripts/npc.gd"))
-		npc.shop_id = entry[0]
-		npc.position = Vector2(entry[1]*TILE+16,entry[2]*TILE+16)
+		npc.shop_id = entry.id
+		npc.position = Vector2(entry.x,entry.y)
 		entities.add_child(npc)
 		npcs.append(npc)
 	if not App.character.get("starter_ground_claimed",false):
