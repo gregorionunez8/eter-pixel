@@ -23,8 +23,12 @@ func _ready() -> void:
 	bar.show_percentage = false
 	var background := StyleBoxFlat.new()
 	background.bg_color = Color("111522")
+	background.content_margin_top = 0
+	background.content_margin_bottom = 0
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = Color("a55b4d")
+	fill.content_margin_top = 0
+	fill.content_margin_bottom = 0
 	bar.add_theme_stylebox_override("background", background)
 	bar.add_theme_stylebox_override("fill", fill)
 	bar.size = Vector2(36, 5)
@@ -43,6 +47,7 @@ func _ready() -> void:
 
 func refresh() -> void:
 	bar.value = state.hp
+	bar.size = Vector2(36,5)
 	bar.visible = not dead
 	if dead:
 		sprite.scale.y = 0.25

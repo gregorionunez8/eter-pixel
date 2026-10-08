@@ -245,7 +245,13 @@ export class WorldEconomy {
     unequip(this.actor(id).state, slot);
   }
   move(id: string, uid: string, x: number, y: number) {
-    move(this.actor(id).state.inventory, uid, x, y);
+    const actor = this.actor(id),
+      draft = structuredClone(actor.state.inventory);
+    for (const [slot, equipped] of Object.entries(draft.equipment))
+      if (equipped === uid) delete draft.equipment[slot];
+    move(draft, uid, x, y);
+    actor.state.inventory = draft;
+    refresh(actor.state);
   }
   consume(id: string, uid: string) {
     consume(this.actor(id).state, uid);

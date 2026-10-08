@@ -129,6 +129,8 @@ export class AuthoritativeWorld {
         class_id: actor.state.class_id,
         level: actor.state.level,
         hp: actor.state.hp,
+        max_hp: actor.state.stats.max_hp,
+        weapon_equipped: Boolean(actor.state.inventory.equipment.weapon),
         position: { ...actor.state.position },
       })),
     };

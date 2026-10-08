@@ -26,6 +26,24 @@ function fixture(classId = "warrior", roll = 0.2) {
     });
   return { world, actor };
 }
+test("drag equipped item into grid atomically unequips and validates destination", () => {
+  const { world, actor } = fixture();
+  const sword = makeItem("bronze_sword", 1, "magic");
+  add(actor.state.inventory, sword);
+  equip(actor.state, sword.uid);
+  const before = structuredClone(actor.state);
+  assert.throws(
+    () => world.economy.move(actor.id, sword.uid, 0, 0),
+    /invalid_placement/,
+  );
+  assert.deepEqual(actor.state, before);
+  world.economy.move(actor.id, sword.uid, 3, 3);
+  assert.equal(actor.state.inventory.equipment.weapon, undefined);
+  assert.equal(find(actor.state.inventory, sword.uid).x, 3);
+  assert.equal(find(actor.state.inventory, sword.uid).y, 3);
+  assert.ok(valid(actor.state.inventory, "warrior"));
+  assert.ok(Number(actor.state.stats.attack) < Number(before.stats.attack));
+});
 test("server grid covers all sizes bounds collision duplicate UID and stack conservation", () => {
   const state = createCharacter("Acero", "warrior").inventory;
   for (const definition of ["ring", "boots", "helmet", "robe"]) {

@@ -119,6 +119,24 @@ func show_menu() -> void:
 	status.position = Vector2(0, 330)
 	status.size.x = 640
 	menu.add_child(status)
+	var online_button := Button.new()
+	online_button.name = "Online"
+	online_button.text = "Jugar online"
+	online_button.position = Vector2(465,60)
+	online_button.size = Vector2(155,32)
+	online_button.pressed.connect(start_online)
+	menu.add_child(online_button)
+
+func start_online() -> void:
+	menu.queue_free()
+	creation = preload("res://scripts/online_lobby.gd").new()
+	creation.entered.connect(func(data: Dictionary):
+		App.character = data.state.duplicate(true)
+		App.player_name = App.character.name
+		App.class_id = App.character.class_id
+		open_world())
+	creation.canceled.connect(func(): creation.queue_free(); show_menu())
+	add_child(creation)
 
 func show_settings() -> void:
 	var dialog := AcceptDialog.new()

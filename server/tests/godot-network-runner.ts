@@ -13,27 +13,51 @@ const database = await openDatabase(
 );
 let service: Awaited<ReturnType<typeof startService>> | undefined;
 const suffix = randomUUID().replaceAll("-", "").slice(0, 8);
+const mode = process.argv[3] ?? "transport";
 try {
   const store = new Store(database.pool);
   await store.migrate();
-  service = await startService(store, 0, { persistenceKey: "godot_" + suffix });
+  if (mode !== "transport") {
+    for (const role of [0, 1]) {
+      const account = await store.register(
+        `godotw_${role}_${suffix}`,
+        "fixture-password",
+      );
+      const saved = await store.create(
+        account,
+        `Red${role}${suffix}`,
+        role === 0 ? "warrior" : "mage",
+      );
+      saved.state.gold = 1000; // Explicit economy UI fixture, never client-provided gold.
+      saved.state.position = { x: role === 0 ? 1008 : 976, y: 560 };
+      await store.save(account, saved.id, saved.state, saved.revision);
+    }
+  }
+  service = await startService(store, 0, {
+    persistenceKey: "godot_" + suffix,
+    ...(mode !== "transport"
+      ? { random: () => 0.2, lootRandom: () => 0.2 }
+      : {}),
+  });
   const url = `ws://127.0.0.1:${service.port}`;
   const execute = (role: number) =>
     new Promise<void>((resolvePromise, reject) => {
-      const logPath = resolve(`../artifacts/godot-network-${role}.log`);
+      const logPath = resolve(`../artifacts/godot-${mode}-${role}.log`);
       const fd = openSync(logPath, "w");
       const child = spawn(
         process.argv[2] ?? "C:/Godot/godot.exe",
         [
-          "--headless",
+          ...(mode === "graphics" ? [] : ["--headless"]),
           "--path",
           resolve("../client"),
-          "--script",
-          "res://tests/network_transport.gd",
+          ...(mode === "transport"
+            ? ["--script", "res://tests/network_transport.gd"]
+            : ["res://scenes/test_online_world.tscn"]),
           "--",
           url,
           String(role),
           suffix,
+          mode,
         ],
         { windowsHide: true, stdio: ["ignore", fd, fd] },
       );
@@ -41,7 +65,7 @@ try {
       const timer = setTimeout(() => {
         child.kill();
         reject(new Error("Godot network timed out"));
-      }, 30000);
+      }, 60000);
       child.once("error", (error) => {
         clearTimeout(timer);
         reject(error);
@@ -53,7 +77,11 @@ try {
         if (
           code !== 0 ||
           /SCRIPT ERROR|ERROR:|FAIL network/.test(log) ||
-          !log.includes("PASS Godot network transport")
+          !log.includes(
+            mode === "transport"
+              ? "PASS Godot network transport"
+              : "PASS online world",
+          )
         )
           reject(new Error(`Godot role${role} failed (${code})`));
         else resolvePromise();
@@ -62,7 +90,11 @@ try {
   const results = await Promise.allSettled([execute(0), execute(1)]);
   for (const result of results)
     if (result.status === "rejected") throw result.reason;
-  console.log("PASS two actual Godot transports with SQL reconnect");
+  console.log(
+    mode === "transport"
+      ? "PASS two actual Godot transports with SQL reconnect"
+      : "PASS two actual Godot worlds with authoritative gameplay and SQL reconnect",
+  );
 } finally {
   await service?.close();
   await database.close();

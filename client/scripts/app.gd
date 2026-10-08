@@ -7,6 +7,52 @@ var class_id := "warrior"
 var character: Dictionary = {}
 var persistence_enabled := true
 var active_character := false
+var online := false
+var network: EterNetwork
+var online_character_id := ""
+var credentials: Dictionary = {}
+var network_url := ""
+signal intent_failed(message: String)
+
+func begin_connection(url: String) -> Error:
+	if is_instance_valid(network):
+		network.queue_free()
+	network = EterNetwork.new()
+	add_child(network)
+	network_url = url
+	return network.connect_server(url)
+
+func send_intent(operation: String, data: Dictionary) -> Dictionary:
+	var reply: Dictionary = await network.request(operation,data) if is_instance_valid(network) else {"ok":false,"error":"disconnected"}
+	if not reply.get("ok",false):
+		intent_failed.emit(error_message(reply.get("error","disconnected")))
+	return reply
+
+func error_message(code: String) -> String:
+	return {"disconnected":"Conexión perdida. Usá Reconectar en el menú.","timeout":"Sin respuesta. Revisá el estado antes de repetir.","insufficient_gold":"Oro insuficiente", "inventory_full":"Inventario lleno", "out_of_range":"Acercate al objetivo", "cooldown":"Habilidad en enfriamiento", "insufficient_mana":"Maná insuficiente", "character_in_use":"Personaje conectado; esperá el guardado", "invalid_credentials":"Cuenta o contraseña incorrecta", "persistence_failed":"No se pudo guardar. Operación rechazada."}.get(code,"Operación rechazada (%s)" % code)
+
+func end_online() -> void:
+	if is_instance_valid(network):
+		network.close()
+	online = false
+	online_character_id = ""
+	credentials.clear()
+	active_character = false
+
+func reconnect() -> Dictionary:
+	if not online or not is_instance_valid(network):
+		return {"ok":false,"error":"disconnected"}
+	if network.was_open:
+		return {"ok":false,"error":"already_connected"}
+	if network.connect_server(network_url) != OK:
+		return {"ok":false,"error":"connect_failed"}
+	var deadline := Time.get_ticks_msec()+10000
+	while not network.was_open and Time.get_ticks_msec()<deadline:
+		await get_tree().process_frame
+	var reply: Dictionary = await send_intent("login",credentials)
+	if reply.get("ok",false):
+		reply = await send_intent("enter_world",{"character_id":online_character_id})
+	return reply
 
 func _ready() -> void:
 	settings.load("user://settings.cfg")
@@ -22,7 +68,7 @@ func _ready() -> void:
 			persistence_enabled = false
 
 func save_character() -> void:
-	if persistence_enabled and active_character and not EterSave.save(character):
+	if persistence_enabled and active_character and not online and not EterSave.save(character):
 		log_error("No se pudo guardar el personaje local")
 
 func _notification(what: int) -> void:

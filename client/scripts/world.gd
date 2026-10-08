@@ -41,6 +41,7 @@ var chat_ui: Control
 var health_bar := ProgressBar.new()
 var mana_bar := ProgressBar.new()
 var experience_bar := ProgressBar.new()
+var online_world: Node
 
 func _ready() -> void:
 	economy_random.randomize()
@@ -55,6 +56,7 @@ func _ready() -> void:
 	navigation.setup(SIZE, blocked)
 	player = EterPlayer.new()
 	player.navigation = navigation
+	player.replicated = App.online
 	player.position = spawn_position
 	entities.add_child(player)
 	player.camera.limit_left = 0
@@ -64,18 +66,23 @@ func _ready() -> void:
 	for x in [22, 24, 26]:
 		var target := EterTrainingTarget.new()
 		target.position = Vector2(x * TILE + 16, 27 * TILE + 16)
+		target.set_meta("server_id","training-%d" % x)
 		entities.add_child(target)
 		targets.append(target)
 	combat.setup(self, player, targets)
 	add_child(combat)
-	for entry in geometry.monsters:
+	for monster_index in range(geometry.monsters.size()):
+		var entry: Dictionary = geometry.monsters[monster_index]
 		var monster := EterMonster.new()
 		monster.species_id = entry.species
 		monster.position = Vector2(entry.x,entry.y)
 		monster.navigation = navigation
 		monster.player = player
 		monster.combat = combat
+		monster.set_meta("server_id","monster-%d" % monster_index)
 		entities.add_child(monster)
+		if App.online:
+			monster.set_physics_process(false)
 		targets.append(monster)
 	combat.state_changed.connect(update_resources)
 	combat.target_defeated.connect(reward_monster)
@@ -92,12 +99,16 @@ func _ready() -> void:
 		npc.position = Vector2(entry.x,entry.y)
 		entities.add_child(npc)
 		npcs.append(npc)
-	if not App.character.get("starter_ground_claimed",false):
+	if not App.online and not App.character.get("starter_ground_claimed",false):
 		spawn_ground_item(EterInventory.make_item("bronze_sword",1,"magic"),spawn_position+Vector2(-96,32))
 		ground_items[0].starter_reward = true
 	var ambient := CanvasModulate.new()
 	ambient.color = Color(0.83, 0.89, 0.96)
 	add_child(ambient)
+	if App.online:
+		online_world = preload("res://scripts/online_world.gd").new()
+		online_world.world = self
+		add_child(online_world)
 	queue_redraw()
 
 func add_obstacle(cells: Rect2i, texture_id: String) -> void:
@@ -198,8 +209,18 @@ func build_hud() -> void:
 	box.add_child(settings)
 	var leave := Button.new()
 	leave.text = "Volver al inicio"
-	leave.pressed.connect(func(): App.save_character(); get_tree().reload_current_scene())
+	leave.pressed.connect(func(): App.save_character(); App.end_online(); get_tree().reload_current_scene())
 	box.add_child(leave)
+	if App.online:
+		var reconnect_button := Button.new()
+		reconnect_button.text = "Reconectar"
+		reconnect_button.pressed.connect(func():
+			reconnect_button.disabled = true
+			var reply: Dictionary = await App.reconnect()
+			if reply.get("ok",false): online_world.entered(reply.data)
+			else: message_label.text = App.error_message(reply.get("error","disconnected")); message_left = 5
+			reconnect_button.disabled = false)
+		box.add_child(reconnect_button)
 	build_character_panel()
 	inventory_ui = Control.new()
 	inventory_ui.set_script(preload("res://scripts/inventory_ui.gd"))
@@ -273,6 +294,10 @@ func open_shop(npc: Node2D) -> void:
 func transact(operation: String, value: String) -> bool:
 	if not shop_ui.visible or not is_instance_valid(active_npc) or player.dead or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position):
 		return false
+	if App.online:
+		var data := {"definition":value,"shop_id":active_npc.shop_id} if operation == "buy" else {"uid":value,"shop_id":active_npc.shop_id} if operation == "sell" else {"uid":value}
+		App.send_intent(operation,data)
+		return true
 	var accepted := false
 	match operation:
 		"buy": accepted = EterEconomy.buy(App.character,active_npc.shop_id,value)
@@ -294,6 +319,8 @@ func transact(operation: String, value: String) -> bool:
 	return accepted
 
 func inventory_changed() -> void:
+	if App.online:
+		return
 	App.character.stats = EterCharacter.derive(App.character)
 	App.character.hp = mini(App.character.hp,App.character.stats.max_hp)
 	App.character.mana = mini(App.character.mana,App.character.stats.max_mana)
@@ -317,6 +344,9 @@ func spawn_gold(amount: int, point: Vector2) -> void:
 	ground_items.append(ground)
 
 func drop_item(uid: String) -> void:
+	if App.online:
+		App.send_intent("drop",{"uid":uid})
+		return
 	if player.dead:
 		return
 	var item := EterInventory.remove(App.character.inventory,uid)
@@ -328,6 +358,9 @@ func drop_item(uid: String) -> void:
 func pickup_item(ground: EterGroundItem) -> bool:
 	if not is_instance_valid(ground) or not ground_items.has(ground) or player.dead or player.position.distance_to(ground.position) > 48:
 		return false
+	if App.online:
+		App.send_intent("pickup",{"ground_id":str(ground.get_meta("server_id",""))})
+		return true
 	if ground.gold > 0:
 		App.character.gold += ground.gold
 	elif not EterInventory.add(App.character.inventory,ground.item):
@@ -382,6 +415,9 @@ func build_character_panel() -> void:
 		button.add_theme_stylebox_override("disabled", button_style)
 		button.custom_minimum_size = Vector2(34, 24)
 		button.pressed.connect(func():
+			if App.online:
+				App.send_intent("allocate",{"attribute":attribute,"amount":1})
+				return
 			if EterProgression.allocate(App.character, attribute):
 				update_resources())
 		row.add_child(button)
@@ -396,6 +432,8 @@ func update_character_panel() -> void:
 		allocation_buttons[attribute].disabled = character.attribute_points <= 0
 
 func reward_monster(target: EterTrainingTarget) -> void:
+	if App.online:
+		return
 	if not target is EterMonster:
 		return
 	var levels := EterProgression.gain_experience(App.character, int(target.config.experience))

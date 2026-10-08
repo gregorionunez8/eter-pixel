@@ -25,6 +25,9 @@ func _can_drop_data(_position: Vector2, data: Variant) -> bool:
 	return definition.get("slot","") == slot and character.class_id in definition.get("classes",["warrior","mage","elf"])
 
 func _drop_data(position: Vector2, data: Variant) -> void:
+	if App.online:
+		if _can_drop_data(position,data): App.send_intent("equip",{"uid":data.uid})
+		return
 	if _can_drop_data(position,data) and EterInventory.equip(character,data.uid):
 		changed.emit()
 

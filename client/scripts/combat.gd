@@ -31,6 +31,8 @@ func select_target(target: EterTrainingTarget) -> void:
 		selected.selected = false
 		selected.queue_redraw()
 	selected = target
+	if App.online:
+		App.send_intent("select_target",{"target_id":str(target.get_meta("server_id","")) if is_instance_valid(target) else ""})
 	if is_instance_valid(selected):
 		selected.selected = true
 		selected.queue_redraw()
@@ -104,6 +106,9 @@ func receive_damage(attack_stats: Dictionary) -> void:
 	state_changed.emit()
 
 func cast(skill_id: String) -> bool:
+	if App.online:
+		App.send_intent("cast",{"skill_id":skill_id})
+		return true
 	var rules := EterCombatRules.definitions()
 	if player.dead or not skill_id in rules.classes[App.class_id].skills:
 		return false
@@ -142,6 +147,8 @@ func cast(skill_id: String) -> bool:
 	return true
 
 func _physics_process(delta: float) -> void:
+	if App.online:
+		return
 	if not is_instance_valid(player):
 		return
 	var rules := EterCombatRules.definitions()

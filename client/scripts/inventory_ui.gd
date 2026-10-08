@@ -80,6 +80,13 @@ func activate() -> void:
 	if item.is_empty():
 		return
 	var definition: Dictionary = EterInventory.definitions().definitions[item.definition]
+	if App.online:
+		if definition.category == "potion": App.send_intent("consume",{"uid":item.uid})
+		elif character.inventory.equipment.values().has(item.uid):
+			for slot in character.inventory.equipment:
+				if character.inventory.equipment[slot] == item.uid: App.send_intent("unequip",{"slot":slot})
+		else: App.send_intent("equip",{"uid":item.uid})
+		return
 	var success := false
 	if definition.category == "potion":
 		if character.hp < character.stats.max_hp:

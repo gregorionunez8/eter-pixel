@@ -43,6 +43,9 @@ func _can_drop_data(position: Vector2, data: Variant) -> bool:
 func _drop_data(position: Vector2, data: Variant) -> void:
 	if not _can_drop_data(position,data):
 		return
+	if App.online:
+		App.send_intent("inventory_move",{"uid":data.uid,"x":floori(position.x/CELL),"y":floori(position.y/CELL)})
+		return
 	var draft: Dictionary = character.inventory.duplicate(true)
 	for slot in draft.equipment.keys():
 		if draft.equipment[slot] == data.uid and not EterInventory.unequip(draft,slot):
