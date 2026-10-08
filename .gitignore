@@ -1,0 +1,8 @@
+client/.godot/
+node_modules/
+server/dist/
+.env
+artifacts/
+tools/vendor/
+*.log
+*.tmp
