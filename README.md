@@ -26,4 +26,6 @@ Tests headless cubren navegación, tres clases, combate, seis IA, niveles e inve
 
 Documentación: docs/MASTER_PLAN.md, ARCHITECTURE.md, GAME_DESIGN.md, ART_DIRECTION.md, TEST_REPORT.md y NEXT_TASK.md.
 
+Interfaz: M o clic en minimapa abre mapa. Enter abre chat con selección Global/Local; sin servidor informa que no envía mensajes. Esc cierra chat/mapa/tienda antes de abrir menú; desde menú se puede configurar pantalla/volumen. Barras muestran vida/maná/XP. UI verificada también a960x540 y1280x720 con render interno640x360.
+
 Economía ya integrada: monstruos dejan oro/objetos recogibles por clic. Hacé clic en Iria frente a la tienda o Daro frente al herrero para caminar y abrir su ventana. Comprar valida oro/espacio; vender consume toda la pila y exige desequipar; Daro repara desgaste y ofrece mejoras +15 con probabilidades/costos visibles. El oro empieza en0: conseguí drops entrenando. Impactos desgastan arma/armadura; roto pierde bonos hasta reparar. Esto reemplaza las menciones anteriores a economía pendiente; mapas adicionales, servidor, SQL y multijugador siguen pendientes.

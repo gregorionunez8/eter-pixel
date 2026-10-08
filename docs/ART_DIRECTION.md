@@ -1,5 +1,7 @@
 # Dirección artística
 
+HUD coherente con paneles pizarra/borde bronce, vida roja/maná azul/XP dorado, minimapa verde oscuro, jugador cian/servicios oro/enemigos rojo. Mapa es visualización esquemática de geometría, no escenario final. Renderer640x360 revisado con ventanas y chat; arte de mundo sigue procedural provisional.
+
 Fantasía medieval oscura original. Piedra azul espectral como acento; ciudad en pizarra, tierra húmeda, tejados rojizos y madera vieja. Siluetas reconocibles, texturas en grupos de píxeles y luces cálidas de herrería.
 
 Paleta: tinta #111522, sombra #202838, piedra #424e5a, piedra clara #75828b, musgo #304638, hierba #46634b, madera #49352e, cobre #9f6044, oro #d5aa64, éter #64c8cf, piel #c59a79.

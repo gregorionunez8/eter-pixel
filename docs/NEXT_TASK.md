@@ -2,7 +2,7 @@
 
 Leer AGENTS.md y docs/PROGRESS.md. Objetivo activo: vertical slice completa según MASTER_PLAN.md; no detenerse después de las fundaciones.
 
-Fundaciones, movimiento, aldea, personajes, combate, monstruos, progresión, inventario y economía implementados. Regresión integrada pasa; economía397 modelo/17 renderer, inventario83/UI20 y recarga en proceso nuevo. Siguiente: interfaz con minimapa/mapa, barras/nombres/configuración/atajos; después servidor y multijugador en orden. Guardado actual es JSON local, no SQL.
+Fundaciones hasta interfaz local implementadas. Regresión integrada completa pasa: UI18, economía397/17 renderer, inventario83/UI20 y recarga en proceso nuevo. Siguiente: servidor Node/TS/WebSocket/PostgreSQL, primero cuentas/sesiones/creación/persistencia; después autoridad/multiplayer. Guardado actual es JSON local, no SQL. PostgreSQL/Docker no hallados en PATH ni C:/Program Files/PostgreSQL; investigado embedded-postgres (MIT, Windowsx64) como dependencia local, sin instalación global ni nuevo usuario. npm view iniciado: comprobar resultado. No hay backend todavía.
 
 Combate en scripts/combat.gd, fórmulas combat_rules.gd y shared/combat.json. EterTrainingTarget ahora es CharacterBody2D base; EterMonster hereda, usa navegación, seis configs shared/monsters.json y estados propios. Combat omite el tick de efigie para monstruos. target_defeated se emite una vez por muerte; usarla para experiencia sólo en EterMonster. Catalog autoload cachea datos sin retención de scripts por static var. No reintroducir esos caches. Proyectiles visuales aplican daño al lanzamiento. No hay servidor todavía.
 

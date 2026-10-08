@@ -1,5 +1,7 @@
 # Arquitectura
 
+Interfaz: map_ui proyecta geometría real del world a minimapa/mapa y sigue entidades. Barras HUD se actualizan desde estado central. chat_ui emite submitted(channel,message) sólo connected; offline no afirma entrega. RichTextLabel.add_text evita interpretar formato recibido. settings_ui reutiliza App.settings, tests no persisten cambios de configuración. Enter/Esc gestionan foco, ventanas usan resolución interna fija y escala integer.
+
 Economía local: EterEconomy consume shared/economy.json (precios/stock/drops/rango). world conecta muerte única -> loot físico, input -> NPC/navegación y shop_ui -> transact validado por rango/LOS/vida. UI sólo envía IDs; costo no viene de la ventana. Compra draft/inserción antes de deducir, venta consume UID una vez, equipo requiere desequipar. Desgaste en hit_resolved desactiva bonos al romperse. Estos servicios todavía se ejecutan localmente y deben trasladarse al servidor autoritativo; no son seguridad online. Loot tiene RNG independiente del combate.
 
 Monorepositorio: client/ (Godot), server/ (TypeScript), shared/ (datos y protocolo), tools/ (generadores y scripts), tests/ (integración), docs/ (continuidad).

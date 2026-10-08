@@ -37,7 +37,7 @@ func apply_settings() -> void:
 func save_settings(fullscreen: bool, volume: float) -> void:
 	settings.set_value("video", "fullscreen", fullscreen)
 	settings.set_value("audio", "volume", volume)
-	var result := settings.save("user://settings.cfg")
+	var result := settings.save("user://settings.cfg") if persistence_enabled else OK
 	if result != OK:
 		log_error("Error guardando configuración: %s" % result)
 	apply_settings()

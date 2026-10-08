@@ -35,6 +35,12 @@ var npcs: Array[Node2D] = []
 var pending_npc: Node2D
 var active_npc: Node2D
 var shop_ui: Control
+var minimap: Control
+var map_panel: Control
+var chat_ui: Control
+var health_bar := ProgressBar.new()
+var mana_bar := ProgressBar.new()
+var experience_bar := ProgressBar.new()
 
 func _ready() -> void:
 	economy_random.randomize()
@@ -153,7 +159,7 @@ func build_hud() -> void:
 	hud.add_child(experience_label)
 	update_resources()
 	var help := Label.new()
-	help.text = "Clic: caminar/atacar · 1/2: habilidades · Esc: menú"
+	help.text = "Clic: mover/atacar · I/C/M: ventanas · Enter: chat · Esc: menú"
 	help.position = Vector2(14, 310)
 	help.add_theme_font_size_override("font_size", 11)
 	help.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -176,7 +182,7 @@ func build_hud() -> void:
 		skill_buttons.append(button)
 	pause_menu = PanelContainer.new()
 	pause_menu.position = Vector2(220, 112)
-	pause_menu.size = Vector2(200, 120)
+	pause_menu.size = Vector2(200, 150)
 	pause_menu.visible = false
 	hud.add_child(pause_menu)
 	var box := VBoxContainer.new()
@@ -188,6 +194,15 @@ func build_hud() -> void:
 	resume.text = "Continuar"
 	resume.pressed.connect(func(): pause_menu.hide())
 	box.add_child(resume)
+	var settings := Button.new()
+	settings.name = "Settings"
+	settings.text = "Configuración"
+	settings.pressed.connect(func():
+		var dialog := AcceptDialog.new()
+		dialog.set_script(preload("res://scripts/settings_ui.gd"))
+		hud.add_child(dialog)
+		dialog.popup_centered())
+	box.add_child(settings)
 	var leave := Button.new()
 	leave.text = "Volver al inicio"
 	leave.pressed.connect(func(): App.save_character(); get_tree().reload_current_scene())
@@ -205,6 +220,50 @@ func build_hud() -> void:
 	shop_ui.character = App.character
 	shop_ui.requested.connect(transact)
 	hud.add_child(shop_ui)
+	minimap = Control.new()
+	minimap.set_script(preload("res://scripts/map_ui.gd"))
+	minimap.world = self
+	minimap.position = Vector2(528,10)
+	minimap.size = Vector2(96,64)
+	minimap.activated.connect(toggle_map)
+	hud.add_child(minimap)
+	map_panel = Control.new()
+	map_panel.set_script(preload("res://scripts/map_ui.gd"))
+	map_panel.world = self
+	map_panel.expanded = true
+	map_panel.position = Vector2(284,63)
+	map_panel.size = Vector2(340,246)
+	map_panel.activated.connect(toggle_map)
+	hud.add_child(map_panel)
+	map_panel.hide()
+	chat_ui = Panel.new()
+	chat_ui.set_script(preload("res://scripts/chat_ui.gd"))
+	hud.add_child(chat_ui)
+	var colors := [Color("b94c4c"),Color("487dbc"),Color("d5aa64")]
+	var bars := [health_bar,mana_bar,experience_bar]
+	for index in range(bars.size()):
+		var bar: ProgressBar = bars[index]
+		var background := StyleBoxFlat.new()
+		background.bg_color = Color("111522")
+		background.border_color = Color("796654")
+		background.set_border_width_all(1)
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = colors[index]
+		bar.add_theme_stylebox_override("background",background)
+		bar.add_theme_stylebox_override("fill",fill)
+		bar.show_percentage = false
+		bar.position = Vector2(16,62+index*8)
+		bar.size = Vector2(180,5)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(bar)
+	update_resources()
+
+func toggle_map() -> void:
+	map_panel.visible = not map_panel.visible
+	inventory_ui.hide()
+	character_panel.hide()
+	shop_ui.hide()
+	held = false
 
 func open_shop(npc: Node2D) -> void:
 	if player.dead or player.position.distance_to(npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(npc.position): return
@@ -214,6 +273,7 @@ func open_shop(npc: Node2D) -> void:
 	shop_ui.show()
 	inventory_ui.hide()
 	character_panel.hide()
+	map_panel.hide()
 	held = false
 	player.path.clear()
 
@@ -356,6 +416,10 @@ func reward_monster(target: EterTrainingTarget) -> void:
 	update_resources()
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE and chat_ui.visible:
+		chat_ui.hide()
+		chat_ui.input.release_focus()
+		get_viewport().set_input_as_handled()
 	if event is InputEventMouseMotion:
 		pointer_position = event.position
 	# Release still applies if a UI control consumes the mouse event.
@@ -364,6 +428,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if map_panel.visible:
+			map_panel.hide()
+			return
 		if shop_ui.visible:
 			shop_ui.hide()
 			return
@@ -372,13 +439,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if pause_menu.visible:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		toggle_map()
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ENTER:
+		chat_ui.open()
+		held = false
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
 		shop_ui.hide()
+		map_panel.hide()
 		character_panel.visible = not character_panel.visible
 		inventory_ui.hide()
 		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
 		shop_ui.hide()
+		map_panel.hide()
 		inventory_ui.visible = not inventory_ui.visible
 		character_panel.hide()
 		held = false
@@ -456,6 +532,12 @@ func update_resources() -> void:
 	experience_label.text = "XP %s/%s · Puntos %s · Oro %s · C: personaje" % [App.character.experience, EterProgression.required_experience(App.character.level), App.character.attribute_points,App.character.gold]
 	if not attribute_labels.is_empty():
 		update_character_panel()
+	health_bar.max_value = App.character.stats.max_hp
+	health_bar.value = App.character.hp
+	mana_bar.max_value = App.character.stats.max_mana
+	mana_bar.value = App.character.mana
+	experience_bar.max_value = EterProgression.required_experience(App.character.level)
+	experience_bar.value = App.character.experience
 
 func is_safe(point: Vector2, radius: float = 6.5) -> bool:
 	for rect in solid_rectangles:
