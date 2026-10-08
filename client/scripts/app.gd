@@ -4,6 +4,7 @@ var settings := ConfigFile.new()
 var environment: Dictionary = {}
 var player_name := "Viajero"
 var class_id := "warrior"
+var character: Dictionary = {}
 
 func _ready() -> void:
 	settings.load("user://settings.cfg")
@@ -13,6 +14,7 @@ func _ready() -> void:
 	else:
 		log_error("No se pudo cargar la configuración de entorno")
 	apply_settings()
+	character = EterCharacter.create(player_name, class_id)
 
 func apply_settings() -> void:
 	if DisplayServer.get_name() != "headless":

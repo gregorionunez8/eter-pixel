@@ -9,3 +9,7 @@ Fallos corregidos en runner: wrapper console carecía de exe con el nombre esper
 2026-10-08, hito movimiento/mundo: `./tools/test.ps1` pasa importación, smoke y `PASS movement: 544 checks, pathfinding + actual CharacterBody2D physics`. La suite recorre 530 frames de física: rutas alrededor de sólidos, destino sobre sólido, llegada, parada, destino continuo, bloqueo físico independiente y no cortar esquinas.
 
 Ejecución gráfica real: `tools/invoke-godot.ps1` con --capture-menu y --capture-world, exit 0, mensajes PASS, OpenGL NVIDIA RTX 3080 Ti. artifacts/menu.png y world.png son capturas del viewport real 640x360, ambas inspeccionadas. No se probó aún backend ni multijugador.
+
+2026-10-08, personajes: `./tools/test.ps1` vuelve a pasar importación, smoke actualizado (menú -> creación -> mundo) y 544 checks de movimiento. `PASS characters: 33 checks, all three classes created and moving`, exit 0. Verifica fórmulas numéricas conocidas, aislamiento, validación de nombres/clases, formulario, texturas reales y movimiento/animaciones de cada clase en mundo.
+
+`--capture-classes` ejecutado con renderer OpenGL real: exit 0 y PASS; artifacts/class-warrior.png, class-mage.png y class-elf.png inspeccionadas. Textos, previews y botones caben en 640x360. No hay pruebas de combate todavía.

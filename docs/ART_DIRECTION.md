@@ -11,3 +11,5 @@ Se evaluó ImageGen disponible. Para la primera iteración se elige generación 
 Licencias: código y arte creados en este repositorio para ÉTER; sin dependencias gráficas externas. La fuente predeterminada del motor es provisional.
 
 Recursos presentes: assets/terrain.png (atlas 32x32), traveler.png (32 frames 32x48, 8 direcciones), tree.png, house.png, shop.png, smith.png, shrine.png y wall.png. Generador local tools/generate-art.mjs, determinista y sin dependencias npm. Sombras raster transparentes, edificios con tejados y mampostería; no bloques planos como escenario final.
+
+Clases: warrior.png, mage.png y elf.png son hojas 128x384 con cuatro frames en ocho direcciones. Siluetas con acero/espada, túnica violeta/bastón de éter y cuero verde/arco. Previews a escala entera 3x, sin filtro. El equipo visual inicial forma parte de la hoja; cambios de equipo dinámicos quedan para inventario.

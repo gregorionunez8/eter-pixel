@@ -19,7 +19,7 @@ func _ready() -> void:
 	shape.radius = 7
 	collision.shape = shape
 	add_child(collision)
-	sprite.texture = load("res://assets/traveler.png")
+	sprite.texture = load("res://assets/%s.png" % EterCharacter.definitions().classes[App.class_id].sprite)
 	sprite.hframes = 4
 	sprite.vframes = 8
 	sprite.position = Vector2(0, -18)
@@ -54,7 +54,7 @@ func _physics_process(delta: float) -> void:
 		if offset.length() < 1:
 			path.remove_at(0)
 		else:
-			velocity = offset.normalized() * minf(SPEED, offset.length() / delta)
+			velocity = offset.normalized() * minf(float(App.character.stats.speed), offset.length() / delta)
 	if velocity.length_squared() > 0.1:
 		facing = posmod(roundi(velocity.angle() / (PI / 4)), 8)
 		animation_time += delta

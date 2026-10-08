@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "name_min": 3,
+  "name_max": 16,
+  "attributes": ["strength", "agility", "vitality", "energy"],
+  "derived": {
+    "max_hp": {"base": 40, "vitality": 5, "level": 8},
+    "max_mana": {"base": 12, "energy": 4, "level": 3},
+    "defense": {"base": 0, "agility": 0.35, "vitality": 0.2},
+    "accuracy": {"base": 70, "agility": 0.6, "level": 0.5},
+    "evasion": {"base": 2, "agility": 0.15}
+  },
+  "classes": {
+    "warrior": {"name": "Guerrero", "description": "Acero del refugio. Resiste y combate cuerpo a cuerpo.", "attributes": {"strength": 26, "agility": 16, "vitality": 24, "energy": 8}, "attack": {"base": 4, "strength": 0.8, "agility": 0.15}, "damage_type": "physical", "speed": 112, "sprite": "warrior", "weapon_visual": "sword", "armor_visual": "steel"},
+    "mage": {"name": "Mago", "description": "Custodio de la piedra azul. Canaliza el éter a distancia.", "attributes": {"strength": 10, "agility": 14, "vitality": 16, "energy": 30}, "attack": {"base": 3, "energy": 0.9}, "damage_type": "magic", "speed": 108, "sprite": "mage", "weapon_visual": "staff", "armor_visual": "robe"},
+    "elf": {"name": "Elfa", "description": "Exploradora del bosque. Precisión, arco y magia de apoyo.", "attributes": {"strength": 16, "agility": 30, "vitality": 18, "energy": 14}, "attack": {"base": 3, "strength": 0.2, "agility": 0.7}, "damage_type": "physical", "speed": 120, "sprite": "elf", "weapon_visual": "bow", "armor_visual": "leather"}
+  }
+}

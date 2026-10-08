@@ -3,9 +3,21 @@ extends Node
 var menu: Control
 var world: Node
 var status: Label
+var creation: Control
 
 func _ready() -> void:
 	show_menu()
+	if "--capture-classes" in OS.get_cmdline_user_args():
+		start_game()
+		for index in range(3):
+			creation.class_select.select(index)
+			creation.update_selection(index)
+			await get_tree().create_timer(0.2).timeout
+			await RenderingServer.frame_post_draw
+			var result: int = get_viewport().get_texture().get_image().save_png("res://../artifacts/class-%s.png" % creation.class_ids[index])
+			assert(result == OK)
+		print("PASS rendered class captures")
+		get_tree().quit()
 	if "--capture-menu" in OS.get_cmdline_user_args():
 		await get_tree().create_timer(0.4).timeout
 		await RenderingServer.frame_post_draw
@@ -14,7 +26,7 @@ func _ready() -> void:
 		print("PASS rendered menu capture")
 		get_tree().quit()
 	if "--capture-world" in OS.get_cmdline_user_args():
-		start_game()
+		enter_world("Viajero", "warrior")
 		await get_tree().create_timer(0.5).timeout
 		await RenderingServer.frame_post_draw
 		var result := get_viewport().get_texture().get_image().save_png("res://../artifacts/world.png")
@@ -25,6 +37,10 @@ func _ready() -> void:
 		await get_tree().process_frame
 		assert(menu.has_node("Panel/Buttons/Play"))
 		start_game()
+		await get_tree().process_frame
+		assert(is_instance_valid(creation))
+		creation.name_input.text = "Viajero"
+		creation.submit()
 		await get_tree().process_frame
 		assert(is_instance_valid(world))
 		print("PASS foundation: menu, transition, world scene")
@@ -96,6 +112,23 @@ func start_game() -> void:
 	if is_instance_valid(world):
 		return
 	menu.queue_free()
+	creation = Control.new()
+	creation.set_script(preload("res://scripts/character_creation.gd"))
+	creation.character_created.connect(enter_world)
+	creation.canceled.connect(func(): creation.queue_free(); show_menu())
+	add_child(creation)
+
+func enter_world(player_name: String, class_id: String) -> void:
+	App.character = EterCharacter.create(player_name, class_id)
+	if App.character.is_empty():
+		App.log_error("Creación inválida")
+		return
+	App.player_name = player_name
+	App.class_id = class_id
+	if is_instance_valid(menu):
+		menu.queue_free()
+	if is_instance_valid(creation):
+		creation.queue_free()
 	world = preload("res://scenes/world.tscn").instantiate()
 	add_child(world)
 

@@ -8,4 +8,6 @@ Movimiento: AStarGrid2D sobre tiles 32x32 con diagonales sin atravesar esquinas.
 
 Backend previsto: tick fijo autoritativo, comandos validados, snapshots WebSocket y repositorio transaccional PostgreSQL. Es una decisión de diseño; aún no existe implementación del backend.
 
+Personajes: shared/classes.json contiene atributos y coeficientes; sync-data.mjs copia sólo el recurso empaquetado al cliente. EterCharacter valida nombres/clases, crea estado independiente y calcula estadísticas. App retiene el personaje activo en memoria. El backend deberá reutilizar los datos y comprobar equivalencia de fórmulas; aún no existe guardado de personaje ni autenticación.
+
 Referencia de escalado: https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html

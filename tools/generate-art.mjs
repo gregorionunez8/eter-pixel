@@ -32,11 +32,18 @@ for(const type of['house','smith','shop']){
 const shrine=new Canvas(96,96);shrine.ellipse(48,75,44,13,P.ink,140);shrine.ellipse(48,61,42,25,P.ink);shrine.ellipse(48,59,38,22,P.light);shrine.ellipse(48,58,33,18,P.stone);shrine.ellipse(48,57,29,15,'#243f49');shrine.ellipse(48,55,25,12,'#355d66');
 for(let i=0;i<25;i++)shrine.rect(25+random()*46,50+random()*12,3,1,P.ether);shrine.rect(38,40,21,19,P.ink);shrine.rect(40,42,17,13,P.stone);for(let y=10;y<49;y++){const w=Math.floor(2+Math.sin((y-10)/39*Math.PI)*9);shrine.rect(48-w,y,w*2,1,P.ink);shrine.rect(50-w,y,w*2-4,1,P.ether);shrine.rect(48,y,3,1,'#b1e6df');}shrine.save('shrine');
 const wall=new Canvas(32,48);wall.rect(0,17,32,30,P.ink);wall.rect(1,18,30,26,P.stone);wall.rect(1,18,30,3,P.light);for(let y=25;y<44;y+=7){wall.rect(1,y,30,1,P.shadow);wall.rect(y%2?8:20,y,1,7,P.shadow);}wall.save('wall');
+for(const characterClass of ['warrior','mage','elf']) {
 const actor=new Canvas(128,384);
+const armor=characterClass==='mage'?'#554b83':characterClass==='elf'?'#527357':P.stone;
+const armorLight=characterClass==='mage'?'#8175a8':characterClass==='elf'?'#82a26b':P.light;
 for(let d=0;d<8;d++)for(let f=0;f<4;f++){
  const x=f*32+16,y=d*48,b=f===2?-1:0,s=f===1?2:f===3?-2:0;
  actor.ellipse(x,y+42,11,4,P.ink,100);actor.rect(x-7,y+29+b,5,11+s,P.ink);actor.rect(x+2,y+29+b,5,11-s,P.ink);actor.rect(x-6,y+30+b,3,8+s,P.wood);actor.rect(x+3,y+30+b,3,8-s,P.wood);
- actor.rect(x-8,y+15+b,16,20,P.ink);actor.rect(x-6,y+17+b,12,15,P.stone);actor.rect(x-5,y+18+b,3,12,P.light);actor.rect(x-7,y+29+b,14,3,P.wood);actor.rect(x-1,y+29+b,3,2,P.gold);
+ actor.rect(x-8,y+15+b,16,20,P.ink);actor.rect(x-6,y+17+b,12,15,armor);actor.rect(x-5,y+18+b,3,12,armorLight);actor.rect(x-7,y+29+b,14,3,P.wood);actor.rect(x-1,y+29+b,3,2,P.gold);
  actor.rect(x-11,y+18+b+s,4,12,P.ink);actor.rect(x+7,y+18+b-s,4,12,P.ink);actor.rect(x-10,y+18+b+s,2,7,P.light);actor.rect(x+8,y+18+b-s,2,7,P.stone);actor.rect(x-10,y+27+b+s,2,2,P.skin);actor.rect(x+8,y+27+b-s,2,2,P.skin);
- actor.ellipse(x,y+11+b,7,8,P.ink);actor.ellipse(x,y+10+b,6,6,P.light);actor.rect(x-4,y+4+b,8,4,P.stone);actor.rect(x-1,y+4+b,2,7,'#a6b1b7');const back=d>=5;actor.rect(x-4,y+12+b,8,4,back?P.stone:P.skin);if(!back){const e=d<=1?2:d>=3?-2:0;actor.rect(x-3+e,y+12+b,2,1,P.ink);actor.rect(x+2+e,y+12+b,2,1,P.ink);}actor.line(x+11,y+13+b,x+11,y+30+b,P.light);actor.rect(x+8,y+27+b,7,2,P.gold);
-}actor.save('traveler');console.log('Generated 8 original PNG assets');
+ actor.ellipse(x,y+11+b,7,8,P.ink);actor.ellipse(x,y+10+b,6,6,armorLight);actor.rect(x-4,y+4+b,8,4,armor);actor.rect(x-1,y+4+b,2,7,armorLight);const back=d>=5;actor.rect(x-4,y+12+b,8,4,back?armor:P.skin);if(!back){const e=d<=1?2:d>=3?-2:0;actor.rect(x-3+e,y+12+b,2,1,P.ink);actor.rect(x+2+e,y+12+b,2,1,P.ink);}
+ if(characterClass==='warrior'){actor.line(x+11,y+13+b,x+11,y+30+b,P.light);actor.rect(x+8,y+27+b,7,2,P.gold);}
+ if(characterClass==='mage'){actor.rect(x-7,y+32+b,14,7,P.ink);actor.rect(x-6,y+32+b,12,5,armor);actor.rect(x-4,y+33+b,2,4,armorLight);actor.line(x+11,y+10+b,x+11,y+38+b,P.copper);actor.ellipse(x+11,y+9+b,3,3,P.ink);actor.ellipse(x+11,y+9+b,2,2,P.ether);actor.rect(x-5,y+6+b,10,4,armor);}
+ if(characterClass==='elf'){actor.rect(x-7,y+6+b,3,11,P.gold);actor.rect(x+5,y+6+b,3,11,P.gold);actor.ellipse(x+10,y+23+b,4,11,P.copper);actor.ellipse(x+10,y+23+b,2,9,P.ink,0);actor.line(x+10,y+12+b,x+10,y+34+b,P.gold);}
+}actor.save(characterClass);if(characterClass==='warrior')actor.save('traveler');
+}console.log('Generated 11 original PNG assets, including three class sprite sheets');
