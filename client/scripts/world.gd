@@ -30,8 +30,14 @@ var inventory_ui: Control
 var ground_items: Array[EterGroundItem] = []
 var pending_pickup: EterGroundItem
 var save_tick := 0.0
+var economy_random := RandomNumberGenerator.new()
+var npcs: Array[Node2D] = []
+var pending_npc: Node2D
+var active_npc: Node2D
+var shop_ui: Control
 
 func _ready() -> void:
+	economy_random.randomize()
 	terrain = load("res://assets/terrain.png")
 	entities.y_sort_enabled = true
 	add_child(entities)
@@ -75,7 +81,18 @@ func _ready() -> void:
 	combat.state_changed.connect(update_resources)
 	combat.target_defeated.connect(reward_monster)
 	combat.feedback.connect(func(message: String): message_label.text = message; message_left = 2.5)
+	combat.hit_resolved.connect(func(victim: Node2D, result: Dictionary):
+		if int(result.damage) > 0:
+			EterEconomy.wear(App.character,"armor" if victim == player else "weapon")
+			App.character.stats = EterCharacter.derive(App.character))
 	build_hud()
+	for entry in [["shop",31,17],["smith",34,21]]:
+		var npc := Node2D.new()
+		npc.set_script(preload("res://scripts/npc.gd"))
+		npc.shop_id = entry[0]
+		npc.position = Vector2(entry[1]*TILE+16,entry[2]*TILE+16)
+		entities.add_child(npc)
+		npcs.append(npc)
 	if not App.character.get("starter_ground_claimed",false):
 		spawn_ground_item(EterInventory.make_item("bronze_sword",1,"magic"),spawn_position+Vector2(-96,32))
 		ground_items[0].starter_reward = true
@@ -183,6 +200,45 @@ func build_hud() -> void:
 	inventory_ui.drop_requested.connect(drop_item)
 	hud.add_child(inventory_ui)
 	inventory_ui.hide()
+	shop_ui = Panel.new()
+	shop_ui.set_script(preload("res://scripts/shop_ui.gd"))
+	shop_ui.character = App.character
+	shop_ui.requested.connect(transact)
+	hud.add_child(shop_ui)
+
+func open_shop(npc: Node2D) -> void:
+	if player.dead or player.position.distance_to(npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(npc.position): return
+	active_npc = npc
+	shop_ui.shop_id = npc.shop_id
+	shop_ui.refresh()
+	shop_ui.show()
+	inventory_ui.hide()
+	character_panel.hide()
+	held = false
+	player.path.clear()
+
+func transact(operation: String, value: String) -> bool:
+	if not shop_ui.visible or not is_instance_valid(active_npc) or player.dead or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position):
+		return false
+	var accepted := false
+	match operation:
+		"buy": accepted = EterEconomy.buy(App.character,active_npc.shop_id,value)
+		"sell": accepted = EterEconomy.sell(App.character,value)
+		"repair": accepted = active_npc.shop_id == "smith" and EterEconomy.repair(App.character,value)
+		"upgrade":
+			if active_npc.shop_id == "smith":
+				var result := EterInventory.upgrade(App.character,value,economy_random.randf())
+				accepted = result.accepted
+				if accepted:
+					message_label.text = "Mejora exitosa" if result.success else "Mejora fallida: perdió un nivel"
+	if accepted:
+		inventory_changed()
+		inventory_ui.refresh()
+		shop_ui.refresh()
+	else:
+		message_label.text = "Operación rechazada: revisá oro, espacio o equipo"
+	message_left = 3
+	return accepted
 
 func inventory_changed() -> void:
 	App.character.stats = EterCharacter.derive(App.character)
@@ -199,6 +255,14 @@ func spawn_ground_item(item: Dictionary, point: Vector2) -> void:
 	entities.add_child(ground)
 	ground_items.append(ground)
 
+func spawn_gold(amount: int, point: Vector2) -> void:
+	if amount <= 0: return
+	var ground := EterGroundItem.new()
+	ground.gold = amount
+	ground.position = point
+	entities.add_child(ground)
+	ground_items.append(ground)
+
 func drop_item(uid: String) -> void:
 	if player.dead:
 		return
@@ -211,7 +275,9 @@ func drop_item(uid: String) -> void:
 func pickup_item(ground: EterGroundItem) -> bool:
 	if not is_instance_valid(ground) or not ground_items.has(ground) or player.dead or player.position.distance_to(ground.position) > 48:
 		return false
-	if not EterInventory.add(App.character.inventory,ground.item):
+	if ground.gold > 0:
+		App.character.gold += ground.gold
+	elif not EterInventory.add(App.character.inventory,ground.item):
 		message_label.text = "Inventario lleno"
 		message_left = 2
 		return false
@@ -280,6 +346,11 @@ func reward_monster(target: EterTrainingTarget) -> void:
 	if not target is EterMonster:
 		return
 	var levels := EterProgression.gain_experience(App.character, int(target.config.experience))
+	var loot := EterEconomy.loot(target.species_id,economy_random)
+	spawn_gold(loot.gold,target.position+Vector2(-16,0))
+	for index in range(loot.items.size()):
+		spawn_ground_item(loot.items[index],target.position+Vector2(16+index*24,0))
+	App.save_character()
 	message_label.text = "+%s XP%s" % [target.config.experience, " · ¡Nivel %s!" % App.character.level if levels > 0 else ""]
 	message_left = 3
 	update_resources()
@@ -293,16 +364,21 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if shop_ui.visible:
+			shop_ui.hide()
+			return
 		pause_menu.visible = not pause_menu.visible
 		held = false
 		return
 	if pause_menu.visible:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
+		shop_ui.hide()
 		character_panel.visible = not character_panel.visible
 		inventory_ui.hide()
 		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+		shop_ui.hide()
 		inventory_ui.visible = not inventory_ui.visible
 		character_panel.hide()
 		held = false
@@ -319,6 +395,16 @@ func handle_primary(point: Vector2) -> void:
 	if player.dead:
 		return
 	pending_pickup = null
+	pending_npc = null
+	for npc in npcs:
+		if point.distance_to(npc.position+Vector2(0,-16)) < 24:
+			combat.select_target(null)
+			if player.position.distance_to(npc.position) <= float(EterEconomy.rules().npc_range) and combat.line_of_sight(npc.position):
+				open_shop(npc)
+			else:
+				pending_npc = npc
+				player.move_to(npc.position)
+			return
 	for ground in ground_items:
 		if point.distance_to(ground.position) < 20:
 			combat.select_target(null)
@@ -339,6 +425,11 @@ func set_destination(point: Vector2) -> void:
 	queue_redraw()
 
 func _process(delta: float) -> void:
+	if is_instance_valid(pending_npc) and player.position.distance_to(pending_npc.position) <= float(EterEconomy.rules().npc_range) and combat.line_of_sight(pending_npc.position):
+		open_shop(pending_npc)
+		pending_npc = null
+	if shop_ui.visible and (player.dead or not is_instance_valid(active_npc) or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range)):
+		shop_ui.hide()
 	save_tick += delta
 	if save_tick >= 30:
 		save_tick = 0
@@ -362,7 +453,7 @@ func _process(delta: float) -> void:
 
 func update_resources() -> void:
 	resource_label.text = "%s · Nv %s · Vida %s/%s · Maná %s/%s" % [EterCharacter.definitions().classes[App.class_id].name, App.character.level, App.character.hp, App.character.stats.max_hp, App.character.mana, App.character.stats.max_mana]
-	experience_label.text = "XP %s/%s · Puntos %s · C: personaje" % [App.character.experience, EterProgression.required_experience(App.character.level), App.character.attribute_points]
+	experience_label.text = "XP %s/%s · Puntos %s · Oro %s · C: personaje" % [App.character.experience, EterProgression.required_experience(App.character.level), App.character.attribute_points,App.character.gold]
 	if not attribute_labels.is_empty():
 		update_character_panel()
 

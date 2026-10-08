@@ -25,3 +25,5 @@ Guardado local por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: a
 Tests headless cubren navegación, tres clases, combate, seis IA, niveles e inventario. `-Graphics` incluye eventos de mouse/teclado y arrastre real, snapshot en artifacts y recarga en otro proceso; mueve temporalmente el cursor dentro de Godot y lo restaura. Tests/capturas no escriben guardados de usuario. Reporte completo en docs/TEST_REPORT.md.
 
 Documentación: docs/MASTER_PLAN.md, ARCHITECTURE.md, GAME_DESIGN.md, ART_DIRECTION.md, TEST_REPORT.md y NEXT_TASK.md.
+
+Economía ya integrada: monstruos dejan oro/objetos recogibles por clic. Hacé clic en Iria frente a la tienda o Daro frente al herrero para caminar y abrir su ventana. Comprar valida oro/espacio; vender consume toda la pila y exige desequipar; Daro repara desgaste y ofrece mejoras +15 con probabilidades/costos visibles. El oro empieza en0: conseguí drops entrenando. Impactos desgastan arma/armadura; roto pierde bonos hasta reparar. Esto reemplaza las menciones anteriores a economía pendiente; mapas adicionales, servidor, SQL y multijugador siguen pendientes.

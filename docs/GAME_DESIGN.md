@@ -1,5 +1,7 @@
 # Diseño de juego
 
+Economía jugable local: monstruos dejan oro y objetos según tablas. Clic recoge al acercarse. Iria vende pociones/armadura/accesorios; Daro vende armas/protecciones, repara y mejora. Comprar entrega una unidad; vender entrega la pila completa y requiere desequipar. Se cobra reparación por punto perdido. Impactos desgastan arma/armadura, durabilidad cero elimina bonos. +0..+15 cobra oro, chance y descenso de un nivel al fallar configurables; la primera mejora es garantizada. Oro inicial0, entrenar permite financiar compras; efigies no premian.
+
 Aldea de Éter es un refugio levantado alrededor de una piedra azul que protege a viajeros de la niebla. El Bosque de las Sombras y la Cripta Olvidada contienen los restos del pacto que originó esa protección.
 
 Guerrero: fuerza y defensa; Mago: energía y magia; Elfa: agilidad, arco y apoyo. Cuatro atributos: fuerza, agilidad, vitalidad y energía. Equipamiento y progreso definidos por datos.

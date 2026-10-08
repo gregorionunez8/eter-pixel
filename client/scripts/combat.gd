@@ -91,6 +91,7 @@ func receive_damage(attack_stats: Dictionary) -> void:
 	if not hit_result.miss:
 		since_damage = 0
 	damage_label(player.position, hit_result)
+	hit_resolved.emit(player,hit_result)
 	if App.character.hp == 0:
 		EterProgression.death_penalty(App.character)
 		player.dead = true

@@ -1,5 +1,7 @@
 # Arquitectura
 
+Economía local: EterEconomy consume shared/economy.json (precios/stock/drops/rango). world conecta muerte única -> loot físico, input -> NPC/navegación y shop_ui -> transact validado por rango/LOS/vida. UI sólo envía IDs; costo no viene de la ventana. Compra draft/inserción antes de deducir, venta consume UID una vez, equipo requiere desequipar. Desgaste en hit_resolved desactiva bonos al romperse. Estos servicios todavía se ejecutan localmente y deben trasladarse al servidor autoritativo; no son seguridad online. Loot tiene RNG independiente del combate.
+
 Monorepositorio: client/ (Godot), server/ (TypeScript), shared/ (datos y protocolo), tools/ (generadores y scripts), tests/ (integración), docs/ (continuidad).
 
 Cliente: autoload App para configuración, recursos y registro; Main para flujo de pantallas; escenas independientes de mundo y actor. Resolución interna 640x360, viewport e integer scaling, renderer Compatibility y nearest.

@@ -1,5 +1,7 @@
 # Reporte de pruebas
 
+2026-10-08, economía: `tools/test.ps1 -Godot C:/Godot/godot.exe -Graphics` exit0. Modelo397 checks: stock, costos, apilado, venta única, equipo no vendible, desgaste/reparación, mejora inicial, NaN, saldo, inventario lleno sin deducción, bounds y drops válidos de seis especies. Renderer17 checks: clic camina al NPC, botones comprar/vender/reparar/mejorar, stats/oro, rechazo por distancia, cierre, oro por mouse, doble recogida antes de free y muerte sin doble loot. economy-runtime.png inspeccionada. Importación/smoke, movimiento544, personajes33, combate209, monstruos1376, progresión138, inventario83, input9, inventarioUI20 y recarga en otro proceso también pasan. Sin errores del motor. Fixtures fallidos corregidos: selección antes de layout de ItemList y acceso a nodos liberados; no contados como éxito. Ninguna prueba SQL/red todavía.
+
 Este archivo contiene sólo ejecuciones realizadas y resultados observados. La inspección confirmó Godot 4.7.2 y Node 24.19.0.
 
 2026-10-08, `./tools/test.ps1`: importación headless exit 0; smoke exit 0 y `PASS foundation: menu, transition, world scene`. Sin errores de GDScript. Logs en artifacts/import.*.log y smoke.*.log.

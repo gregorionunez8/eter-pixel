@@ -1,0 +1,6 @@
+{
+  "npc_range":64,"sell_fraction":0.4,"repair_per_point":1,
+  "prices":{"starter_sword":40,"starter_staff":40,"starter_bow":40,"bronze_sword":80,"robe":60,"helmet":40,"gloves":30,"boots":30,"shield":60,"ring":90,"pendant":90,"potion":8,"ore":12},
+  "shops":{"shop":{"name":"Iria · Provisiones","stock":["potion","robe","ring","pendant"]},"smith":{"name":"Daro · Herrero","stock":["bronze_sword","starter_staff","starter_bow","helmet","gloves","boots","shield"]}},
+  "drops":{"spider":[{"item":"ore","chance":0.3}],"goblin":[{"item":"potion","chance":0.4},{"item":"gloves","chance":0.12}],"wolf":[{"item":"boots","chance":0.2}],"skeleton":[{"item":"helmet","chance":0.2},{"item":"shield","chance":0.1}],"orc":[{"item":"bronze_sword","chance":0.25},{"item":"robe","chance":0.15}],"guardian":[{"item":"ring","chance":1,"rarity":"excellent"},{"item":"pendant","chance":0.3,"rarity":"magic"}]}
+}

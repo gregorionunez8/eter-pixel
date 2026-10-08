@@ -144,10 +144,10 @@ static func bonuses(state: Dictionary) -> Dictionary:
 static func upgrade(character: Dictionary, uid: String, roll: float) -> Dictionary:
 	var item := find(character.inventory,uid)
 	var rules: Dictionary = definitions().upgrade
-	if item.is_empty() or int(item.upgrade) >= int(rules.max) or int(definitions().definitions[item.definition].stack) > 1:
+	if item.is_empty() or int(item.upgrade) >= int(rules.max) or not definitions().definitions[item.definition].has("slot") or int(item.durability) <= 0:
 		return {"accepted":false}
 	var cost := int(rules.gold_base) + int(item.upgrade) * int(rules.gold_per_level)
-	if int(character.get("gold",0)) < cost or roll < 0 or roll > 1:
+	if int(character.get("gold",0)) < cost or not is_finite(roll) or roll < 0 or roll > 1:
 		return {"accepted":false}
 	character.gold -= cost
 	var chance := float(rules.chances[int(item.upgrade)])

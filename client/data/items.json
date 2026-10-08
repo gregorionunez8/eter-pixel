@@ -4,9 +4,9 @@
   "upgrade":{"max":15,"stat_per_level":2,"gold_base":20,"gold_per_level":15,"failure_downgrade":1,"chances":[1,0.95,0.9,0.85,0.8,0.75,0.7,0.65,0.6,0.5,0.4,0.3,0.25,0.2,0.15]},
   "slots":["weapon","armor","helmet","gloves","boots","shield","ring","pendant"],
   "definitions":{
-    "starter_sword":{"name":"Espada del refugio","category":"weapon","size":[1,2],"slot":"weapon","classes":["warrior"],"bonuses":{},"icon":0,"stack":1,"durability":100},
-    "starter_staff":{"name":"Bastón de éter","category":"weapon","size":[1,2],"slot":"weapon","classes":["mage"],"bonuses":{},"icon":1,"stack":1,"durability":100},
-    "starter_bow":{"name":"Arco de fresno","category":"weapon","size":[2,3],"slot":"weapon","classes":["elf"],"bonuses":{},"icon":2,"stack":1,"durability":100},
+    "starter_sword":{"name":"Espada del refugio","category":"weapon","size":[1,2],"slot":"weapon","classes":["warrior"],"bonuses":{"attack":0},"icon":0,"stack":1,"durability":100},
+    "starter_staff":{"name":"Bastón de éter","category":"weapon","size":[1,2],"slot":"weapon","classes":["mage"],"bonuses":{"attack":0},"icon":1,"stack":1,"durability":100},
+    "starter_bow":{"name":"Arco de fresno","category":"weapon","size":[2,3],"slot":"weapon","classes":["elf"],"bonuses":{"attack":0},"icon":2,"stack":1,"durability":100},
     "bronze_sword":{"name":"Espada de bronce","category":"weapon","size":[1,2],"slot":"weapon","classes":["warrior"],"bonuses":{"attack":8},"icon":0,"stack":1,"durability":100},
     "robe":{"name":"Armadura del viajero","category":"armor","size":[2,3],"slot":"armor","bonuses":{"defense":3},"icon":3,"stack":1,"durability":100},
     "helmet":{"name":"Yelmo de hierro","category":"helmet","size":[2,2],"slot":"helmet","bonuses":{"defense":2},"icon":4,"stack":1,"durability":100},

@@ -1,6 +1,6 @@
 # Progreso
 
-Fase actual: inventario y persistencia local verificados; economía siguiente.
+Fase actual: economía local verificada; interfaz siguiente.
 
 Repositorio inicialmente vacío. Entorno: Windows, Godot 4.7.2 estable, Node 24.19.0, npm 11.17.0 y Git. Docker y psql no detectados en PATH. Sin instalaciones globales.
 
@@ -23,6 +23,8 @@ Persistencia local: snapshots JSON por nombre con checksum, escritura temporal/r
 Pruebas inventario: modelo83 checks; renderer/input20 checks con arrastres nativos de Godot, equipo y stats, sprite sin arma, soltar/recoger UID, pociones, disco real, replacement Windows y corrupción. Otro proceso headless recupera UID/rareza/mejora/oro. Regresión integrada pasa todos los módulos; ajustes posteriores de iconos/tooltip y chance100% revalidados en suites afectadas.
 Limitaciones actuales: destino ajustado al centro de tile; arte procedural reconocible pero provisional, fuente del motor; salida aún sin cambio de mapa. Sólo presencia del arma cambia sprite, no todos los modelos de armadura. Proyectiles son visuales; daño se resuelve al lanzar. Mejoras tienen modelo testeado, todavía sin NPC/UI de herrero ni oro ganado. Objetos del suelo no se guardan y desaparecen al recargar mundo. Sin tiendas/economía funcional, otros mapas, PostgreSQL ni red. El checksum detecta corrupción, no autentica al cliente; autoridad servidor pendiente.
 Decisiones: renderer Compatibility, resolución interna 640x360 y recursos originales procedurales locales.
-Próxima tarea: economía local integrada, loot por tablas de monstruos, oro, tiendas NPC, comprar/vender/reparar/mejorar, validación de espacio/costo y prevención de duplicados. Después interfaz completa y servidor autoritativo PostgreSQL en orden.
+Economía verificada: oro físico y objetos por tablas de las seis especies, recogida por clic, NPC Iria y Daro con navegación hasta rango, compra por unidad, venta de pila desequipada, reparación por desgaste y mejoras +15 desde herrero. Impactos desgastan arma/armadura; cero desactiva bonos. Armas iniciales mejoradas agregan ataque. Rechazos de saldo/espacio/stock/equipo/rango/pared no alteran estado. Venta/recogida repetidas no duplican oro. RNG de loot separado del combate. Oro/objetos poseídos persisten en JSON local. Esta entrada reemplaza las limitaciones anteriores sobre economía pendiente; otros mapas, SQL y red siguen pendientes, suelo temporal y NPC sin animaciones únicas.
+Pruebas economía: modelo397 y renderer17 checks; botones reales, recorrido hacia NPC alrededor de árbol, cierre/rechazo por distancia, oro y muerte sin doble premio. Captura economy-runtime.png revisada. Regresión completa `./tools/test.ps1 -Godot C:/Godot/godot.exe -Graphics` exit0, todos los módulos y recarga independiente. Fallos corregidos: fixture seleccionaba lista antes del layout diferido; referencias a nodos liberados provocaban errores de motor en tests. Ejecuciones fallidas no cuentan como éxitos.
+Próxima tarea: interfaz, minimapa/mapa, barras de recursos, nombres, atajos y configuración integrada; después servidor autoritativo PostgreSQL en orden.
 
 Hitos Git estables: 81c59f1 fundaciones; cc31582 movimiento/aldea; 4aaf987 personajes; 327e859 combate/input. Verificación integrada `./tools/test.ps1 -Graphics` exit 0. Objetivo completo sigue activo: aún faltan criterios críticos de MMORPG.
