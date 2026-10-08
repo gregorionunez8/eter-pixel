@@ -20,4 +20,4 @@ Objetivo: vertical slice original de ÉTER, MMORPG 2D con control por mouse, per
 
 Cada hito requiere evidencia y commit. La falta de PostgreSQL no debe ocultarse usando una prueba simulada como persistencia SQL real.
 
-Estado2026-10-08: módulos1-10 locales verificados; módulo11 backend cuentas/PostgreSQL y movimiento autoritativo/snapshots con dos peersWS verificados. Cliente Godot sigue offline. Próximo incremento: combate/IA/economía/inventario/progresión servidor, después conectar Godot. Multijugador jugable y tres mapas pendientes; objetivo completo no cumplido.
+Estado2026-10-08: módulos1-10 locales verificados; backend cuentas/SQL/movimiento/combate/IA/progresión y snapshots con dos peersWS verificados (39tests). Cliente Godot sigue offline. Próximo: inventario/loot/economía/checkpoints servidor y conectar Godot. Multijugador jugable y tres mapas pendientes; objetivo completo no cumplido.

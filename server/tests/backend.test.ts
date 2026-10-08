@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { once } from "node:events";
 import { WebSocket } from "ws";
 import { openDatabase } from "../src/database.js";
@@ -9,6 +11,29 @@ import { createCharacter } from "../src/rules.js";
 import { startService } from "../src/service.js";
 
 let sequence = 0;
+test("Windows PostgreSQL lifecycle starts a fresh cluster, rejects double start and closes idempotently", async () => {
+  const directory = "../artifacts/postgres-launcher-clean-test";
+  const database = await openDatabase(directory, 55441);
+  try {
+    assert.match(database.version, /PostgreSQL 18/);
+    await assert.rejects(
+      openDatabase(directory, 55441),
+      /cluster_already_running/,
+    );
+    assert.equal(
+      (await database.pool.query("SELECT 1 AS value")).rows[0].value,
+      1,
+    );
+  } finally {
+    await database.close();
+    await database.close();
+  }
+  assert.equal(
+    existsSync(resolve(directory, "postmaster.pid")),
+    false,
+    "clean shutdown removes server PID",
+  );
+});
 async function snapshot(
   socket: WebSocket,
   predicate: (data: any) => boolean,
@@ -163,7 +188,7 @@ test(
           assert.equal((await store.list(account)).length, 3);
         },
       );
-      service = await startService(store, 0);
+      service = await startService(store, 0, { random: () => 0.2 });
       for (let index = 0; index < 2; index++) {
         const peer = new WebSocket("ws://127.0.0.1:" + service.port);
         peers.push(peer);
@@ -342,6 +367,69 @@ test(
             "character_in_use",
           );
           competing.terminate();
+        },
+      );
+      await t.test(
+        "combat intentions are validated and broadcast to the other peer",
+        async () => {
+          const actor = service!.world.players.get(peerCharacterId)!;
+          const target = service!.world.combat.enemies.get("training-24")!;
+          actor.state.position = {
+            x: target.position.x,
+            y: target.position.y - 64,
+          };
+          actor.path = [];
+          assert.equal(
+            (await request(second, "select_target", { target_id: target.id }))
+              .ok,
+            true,
+          );
+          assert.equal(
+            (
+              await request(second, "cast", {
+                skill_id: "fireball",
+                damage: 10000,
+              })
+            ).error,
+            "bad_request",
+          );
+          const observed = snapshot(first, (data) =>
+            data.events.some(
+              (event: any) =>
+                event.kind === "skill" &&
+                event.actor === peerCharacterId &&
+                event.skill === "fireball",
+            ),
+          );
+          assert.equal(
+            (await request(second, "cast", { skill_id: "fireball" })).ok,
+            true,
+          );
+          const result = await observed;
+          assert.ok(
+            result.enemies.find((enemy: any) => enemy.id === target.id).hp <
+              110,
+          );
+          const mana = actor.state.mana;
+          assert.equal(
+            (await request(second, "cast", { skill_id: "fireball" })).error,
+            "cooldown",
+          );
+          assert.equal(actor.state.mana, mana);
+          assert.equal(
+            (
+              await request(second, "allocate", {
+                attribute: "energy",
+                amount: 1,
+              })
+            ).error,
+            "invalid_allocation",
+          );
+          assert.equal(
+            (await request(second, "award_experience", { amount: 10000 }))
+              .error,
+            "unknown_operation",
+          );
         },
       );
       await t.test(

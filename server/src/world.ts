@@ -1,6 +1,7 @@
 import type { Character } from "./rules.js";
 import { Navigation, geometry, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
+import { CombatSimulation } from "./combat.js";
 type Actor = {
   id: string;
   account: string;
@@ -12,7 +13,11 @@ type Actor = {
 export class AuthoritativeWorld {
   readonly navigation = new Navigation();
   readonly players = new Map<string, Actor>();
+  readonly combat: CombatSimulation;
   tick = 0;
+  constructor(random: () => number = Math.random) {
+    this.combat = new CombatSimulation(this, random);
+  }
   join(
     account: string,
     loaded: { id: string; state: Character; revision: number },
@@ -31,14 +36,16 @@ export class AuthoritativeWorld {
       path: [],
     };
     this.players.set(actor.id, actor);
+    this.combat.join(actor.id);
     return actor;
   }
-  move(id: string, destination: Point) {
+  move(id: string, destination: Point, manual = true) {
     const actor = this.players.get(id);
     if (!actor) throw new Rejected("not_in_world");
     if (actor.state.hp <= 0) throw new Rejected("dead");
     if (!this.navigation.bounded(destination))
       throw new Rejected("invalid_destination");
+    if (manual) this.combat.cancel(id);
     const cell = this.navigation.cellAt(destination);
     if (
       actor.path.length &&
@@ -100,11 +107,14 @@ export class AuthoritativeWorld {
         if (moved === length) actor.path.shift();
       }
     }
+    this.combat.step(delta);
   }
   snapshot() {
     return {
       tick: this.tick,
       map_id: geometry.id,
+      enemies: this.combat.snapshot(),
+      events: this.combat.events,
       players: [...this.players.values()].map((actor) => ({
         id: actor.id,
         name: actor.state.name,
@@ -118,6 +128,7 @@ export class AuthoritativeWorld {
   remove(id: string) {
     const actor = this.players.get(id);
     this.players.delete(id);
+    this.combat.remove(id);
     return actor;
   }
 }

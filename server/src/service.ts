@@ -2,6 +2,7 @@ import { once } from "node:events";
 import { WebSocketServer, WebSocket } from "ws";
 import { Store, Rejected } from "./store.js";
 import { AuthoritativeWorld } from "./world.js";
+import { allocate } from "./rpg.js";
 
 type Request = { v: 1; id: string; op: string; data: Record<string, unknown> };
 function parse(text: string): Request {
@@ -31,7 +32,7 @@ function fields(data: Record<string, unknown>, keys: string[]) {
 export async function startService(
   store: Store,
   port: number,
-  options: { heartbeatMs?: number } = {},
+  options: { heartbeatMs?: number; random?: () => number } = {},
 ) {
   const server = new WebSocketServer({
     host: "127.0.0.1",
@@ -42,7 +43,7 @@ export async function startService(
   await once(server, "listening");
   const pending = new Set<Promise<void>>();
   const connections = new Set<Promise<void>>();
-  const world = new AuthoritativeWorld();
+  const world = new AuthoritativeWorld(options.random);
   const entered = new Map<WebSocket, string>();
   const alive = new WeakMap<WebSocket, boolean>();
   const heartbeat = setInterval(() => {
@@ -66,7 +67,22 @@ export async function startService(
       data: world.snapshot(),
     });
     for (const socket of entered.keys())
-      if (socket.readyState === WebSocket.OPEN) socket.send(payload);
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(payload);
+        const id = entered.get(socket)!,
+          actor = world.players.get(id);
+        if (actor)
+          socket.send(
+            JSON.stringify({
+              v: 1,
+              event: "self",
+              data: {
+                state: actor.state,
+                cooldowns: world.combat.battles.get(id)?.cooldowns ?? {},
+              },
+            }),
+          );
+      }
   }, 50);
   server.on("connection", (socket) => {
     if (server.clients.size > 64) {
@@ -194,6 +210,32 @@ export async function startService(
                 )
                   throw new Rejected("bad_request");
                 world.move(characterId, { x: data.x, y: data.y });
+                result = { accepted: true };
+                break;
+              }
+              case "select_target":
+                fields(data, ["target_id"]);
+                if (!characterId) throw new Rejected("not_in_world");
+                world.combat.select(characterId, data.target_id as string);
+                result = { accepted: true };
+                break;
+              case "cast":
+                fields(data, ["skill_id"]);
+                if (!characterId) throw new Rejected("not_in_world");
+                world.combat.cast(characterId, data.skill_id as string);
+                result = { accepted: true };
+                break;
+              case "allocate": {
+                if (!characterId) throw new Rejected("not_in_world");
+                if (
+                  Object.keys(data).length !== 2 ||
+                  typeof data.attribute !== "string" ||
+                  typeof data.amount !== "number"
+                )
+                  throw new Rejected("bad_request");
+                const actor = world.players.get(characterId)!;
+                if (actor.state.hp <= 0) throw new Rejected("dead");
+                allocate(actor.state, data.attribute, data.amount);
                 result = { accepted: true };
                 break;
               }
