@@ -1,35 +1,40 @@
-# ÉTER
+﻿# ÉTER
 
-MMORPG 2D original en desarrollo. El objetivo es una vertical slice Godot 4 con backend TypeScript y PostgreSQL. Consultar docs/PROGRESS.md para funcionalidades realmente implementadas; no es un MMORPG terminado.
+MMORPG 2D original en desarrollo con Godot 4, GDScript, Node.js/TypeScript, WebSocket y PostgreSQL. La vertical slice completa sigue en construcción: todavía no es un MMORPG terminado.
 
-## Windows
+Cliente local jugable: Aldea de Éter original, movimiento por mouse con colisiones y navegación, Guerrero/Mago/Elfa, seis especies de monstruos, combate y seis habilidades, niveles/atributos, inventario con drag/drop, equipo, drops, oro, tiendas, reparación/mejoras, minimapa y guardado JSON. Backend independiente: cuentas y personajes persistentes en PostgreSQL real, sesiones exclusivas, movimiento autoritativo y snapshots entre dos peers WebSocket. Godot aún funciona offline.
 
-Requiere Godot 4 estable en PATH (verificado con 4.7.2), Git y Node.js para las fases siguientes. Desde PowerShell en el repositorio:
+## Ejecutar en Windows
+
+Requiere Godot 4 estable (verificado con 4.7.2), Node24/npm y Git. Desde PowerShell en este repositorio:
 
 ```powershell
-./tools/start-client.ps1
-./tools/test.ps1
-./tools/test.ps1 -Graphics
+./tools/start-client.ps1 -Godot C:/Godot/godot.exe
+./tools/test.ps1 -Godot C:/Godot/godot.exe -Graphics
+./tools/start-server.ps1 -Install
+./tools/test-server.ps1
 ```
 
-También se puede importar client/project.godot en el editor y pulsar F6/F5. La primera importación genera client/.godot, excluida de Git. No hay servicios remotos requeridos en esta fase.
+Si Godot está en PATH, se puede omitir -Godot. También se puede importar client/project.godot y ejecutar F5. start-server instala dependencias sólo en server/node_modules, compila y arranca PostgreSQL en127.0.0.1:55432 y WebSocket en127.0.0.1:8080. Ctrl+C detiene el backend. Tras instalar, no requiere red para arrancar. `./tools/start-server.ps1 -Smoke` verifica arranque/cierre sin dejarlo corriendo. Detalles y credenciales públicas sólo de desarrollo en [BACKEND_SETUP](docs/BACKEND_SETUP.md); mensajes en [PROTOCOL](docs/PROTOCOL.md).
 
-Actualmente se puede crear Guerrero, Mago o Elfa con nombre y recorrer la Aldea de Éter: clic izquierdo mueve, mantener actualiza destino, Esc abre menú. Hay navegación alrededor de edificios/árboles y colisiones físicas. Salida al bosque señalizada, todavía sin transición. Arte original reproducible con `node tools/generate-art.mjs`. Personajes/objetos se guardan en JSON local; PostgreSQL y multijugador pendientes.
+## Jugar el cliente local
 
-Combate local: caminar al sur hasta las tres efigies, o al este al Cercado de la Niebla con seis especies y dificultad creciente. Clic sobre enemigo persigue/autoataca; 1/2 o botones lanzan habilidades. Se validan rango, paredes, maná y cooldown; hay críticos, muerte, respawn y regeneración. Monstruos detectan, persiguen, atacan y vuelven a su spawn. Matar monstruos otorga XP; al subir nivel se reciben cinco puntos. C abre atributos para asignarlos. Efigies no dan XP; muerte pierde 5% de XP parcial. Todavía faltan economía, otros mapas, SQL y multijugador; loot aún no otorgado.
+Jugar permite crear nombre/clase. Continuar último y Cargar nombre recuperan guardados. Clic izquierdo mueve; mantener actualiza destino; clic en enemigo persigue y autoataca. 1/2 o botones lanzan habilidades con rango/maná/cooldown. Entrená al este en el Cercado de la Niebla; las efigies al sur no dan recompensas. Monstruos dejan XP, oro y objetos; clic recoge drops. Al subir nivel se reciben cinco puntos; C abre atributos.
 
-I abre inventario. Arrastrá objetos para mover/equipar/desequipar; doble clic o clic derecho equipa/usa. Seleccioná equipo para Desequipar; Soltar lo deja en suelo, clic lo recoge. Equipo modifica stats, pociones curan y se apilan. Objetos del suelo desaparecen al recargar mundo.
+I abre inventario: arrastrá para mover/equipar/desequipar, doble clic o clic derecho equipa/usa. Soltar deja el objeto en suelo. Pociones curan y se apilan. Equipo afecta estadísticas; quitar arma cambia sprite. Iria vende provisiones y Daro vende armas/protecciones, repara y mejora hasta+15. Clic en NPC navega y abre al acercarse. Vender consume la pila entera y exige desequipar. Oro inicial0, obtenido de monstruos. Golpes desgastan arma/armadura; roto pierde bonos hasta reparar. Costos/probabilidades configurables.
 
-Servidor ya calcula movimiento con colisiones y envía snapshots entre dos peersWS; guarda posiciónSQL al desconectar y rechaza velocidad enviada por cliente/doble sesión. Ver docs/PROTOCOL.md. Godot aún no está conectado y combate/economía servidor siguen pendientes.
+M o clic en minimapa abre mapa. Enter abre chat con Global/Local; offline informa que no envía. Esc cierra chat/mapa/tienda antes del menú. Configuración de pantalla/volumen disponible desde menú. Resolución interna640x360, nearest y escala integer; UI probada a960x540/1280x720.
 
-Guardado local por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: al entrar, modificar inventario, cada30s y salir al menú/cerrar ventana. Continuar último carga último personaje; Jugar -> Cargar nombre abre otro guardado. Crear no sobrescribe nombres existentes. El loader rechaza archivos corruptos y deriva stats. Este guardado no es validación PostgreSQL ni autoridad online.
+## Datos y pruebas
 
-Tests headless cubren navegación, tres clases, combate, seis IA, niveles e inventario. `-Graphics` incluye eventos de mouse/teclado y arrastre real, snapshot en artifacts y recarga en otro proceso; mueve temporalmente el cursor dentro de Godot y lo restaura. Tests/capturas no escriben guardados de usuario. Reporte completo en docs/TEST_REPORT.md.
+Cliente guarda por nombre en `%APPDATA%/Godot/app_userdata/ÉTER/characters/`: inventario/equipo/oro/XP, checksum y escritura temporal/rename. Servidor guarda cuentas/personajes/posición en SQL, directorio server/.local ignorado por Git. Son dos modos separados: no hay migración de guardados locales a cuentas online todavía.
 
-Documentación: docs/MASTER_PLAN.md, ARCHITECTURE.md, GAME_DESIGN.md, ART_DIRECTION.md, TEST_REPORT.md y NEXT_TASK.md.
+Test cliente importa/headless y verifica movimiento, clases, combate, IA, progresión, inventario y economía. -Graphics añade input/drag reales, NPC/tiendas, mapa/chat/UI, snapshots a disco y recarga en otro proceso. Tests/capturas no guardan personajes ni configuración del usuario; los fixtures quedan en artifacts. Backend tiene18 tests, dos peersWS, colisiones/velocidad/ruta servidor, ownership, concurrencia, revisión, heartbeat y reinicioSQL. [TEST_REPORT](docs/TEST_REPORT.md) distingue pruebas reales y pendientes.
 
-Backend de cuentas/personajes con PostgreSQL real ya implementado: `./tools/start-server.ps1 -Install` instala sólo dependencias locales y arranca SQL+WebSocket enlocalhost; `./tools/test-server.ps1` prueba dos peers y persistencia tras reiniciarSQL; `./tools/start-server.ps1 -Smoke` verifica arranque/cierre. Instrucciones en docs/BACKEND_SETUP.md, protocolo en docs/PROTOCOL.md. Godot continúa offline: movimiento/combate/economía del mundo aún deben trasladarse al servidor. Estas pruebas no equivalen a multijugador jugable.
+Recursos originales locales generados con `node tools/generate-art.mjs`; geometría original compartida con `node tools/generate-world.mjs`; `node tools/sync-data.mjs` sincroniza catálogos (runner lo hace automáticamente). Sin recursos remotos durante juego. PostgreSQL viene de dependencia local, no requiere instalación global ni Docker.
 
-Interfaz: M o clic en minimapa abre mapa. Enter abre chat con selección Global/Local; sin servidor informa que no envía mensajes. Esc cierra chat/mapa/tienda antes de abrir menú; desde menú se puede configurar pantalla/volumen. Barras muestran vida/maná/XP. UI verificada también a960x540 y1280x720 con render interno640x360.
+## Límites actuales y continuidad
 
-Economía ya integrada: monstruos dejan oro/objetos recogibles por clic. Hacé clic en Iria frente a la tienda o Daro frente al herrero para caminar y abrir su ventana. Comprar valida oro/espacio; vender consume toda la pila y exige desequipar; Daro repara desgaste y ofrece mejoras +15 con probabilidades/costos visibles. El oro empieza en0: conseguí drops entrenando. Impactos desgastan arma/armadura; roto pierde bonos hasta reparar. Esto reemplaza las menciones anteriores a economía pendiente; mapas adicionales, servidor, SQL y multijugador siguen pendientes.
+Godot online, combate/IA/progresión/inventario/economía autoritativos, interacción entre dos clientes Godot, reconexión, party/comercio, tres mapas conectados, misiones/contenido y exportaciónWindows están pendientes. Dos peersWS verificados no equivalen a multijugador jugable completo. Objetos del suelo del cliente son temporales, posición local no se guarda; arte procedural sigue provisional, modelos de armadura visual limitados y proyectiles resuelven daño al lanzar. Servidor guarda al desconectar: checkpoints y recuperación durable ante falloSQL pendientes.
+
+Continuar por [NEXT_TASK](docs/NEXT_TASK.md), [PROGRESS](docs/PROGRESS.md) y [MASTER_PLAN](docs/MASTER_PLAN.md). Reglas en AGENTS.md, arquitectura/diseño/arte en docs. Commits locales por hitos, sin push ni despliegue.
