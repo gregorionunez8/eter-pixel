@@ -1,5 +1,7 @@
 # Protocolo local v1
 
+Mapas: nueva intención portal acepta sólo {portal_id:string}; necesita personaje activo/vivo, portal del mapa actual a48px y LOS. Destino/posición provienen del catálogo servidor. Checkpoint SQL antes de respuesta {state,cooldowns,social,world}; un fallo persistence_failed conserva mapa/posición previos. Viaje cancela movimiento/target/comercio. Snapshot incluye map_id y sólo jugadores/enemigos/eventos/suelo del mapa del destinatario. Ground y eventos tienen map_id, self.state incluye mapa/posición persistidos. Globalchat y roster/party siguen globales; localchat/comercio exigen mismo mapa.
+
 WebSocket `ws://127.0.0.1:8080`, texto JSON, 8 KiB máximo, sin compresión.
 Solicitud: `{ "v":1, "id":"secuencia-única", "op":"operación", "data":{} }`.
 Respuesta: `{ "v":1, "id":"misma-id", "ok":true, "data":... }` o `ok:false,error:"código"`.

@@ -21,6 +21,7 @@ export const economyRules = JSON.parse(
 );
 export type Ground = {
   id: string;
+  map_id?: string;
   item?: Item;
   gold: number;
   position: Point;
@@ -66,7 +67,9 @@ export class WorldEconomy {
   }
   private npc(id: string, shop: string) {
     const actor = this.actor(id),
-      npc = geometry.npcs.find((npc: any) => npc.id === shop);
+      npc = this.world
+        .geometryFor(actor.state.map_id)
+        .npcs.find((npc: any) => npc.id === shop);
     if (
       !npc ||
       !Object.hasOwn(economyRules.shops, shop) ||
@@ -74,7 +77,7 @@ export class WorldEconomy {
         actor.state.position.x - npc.x,
         actor.state.position.y - npc.y,
       ) > economyRules.npc_range ||
-      !this.world.combat.visible(actor.state.position, npc)
+      !this.world.combat.visible(actor.state.position, npc, actor.state.map_id)
     )
       throw new Rejected("npc_out_of_range");
     return actor;
@@ -95,6 +98,7 @@ export class WorldEconomy {
     gold?: number;
     position: Point;
     owner?: string;
+    map_id?: string;
   }) {
     if (
       !input.item &&
@@ -104,22 +108,26 @@ export class WorldEconomy {
     if (input.item && !validItem(input.item))
       throw new Error("invalid_ground_item");
     let position = { ...input.position };
-    if (!this.world.navigation.safe(position)) {
-      const cell = this.world.navigation.cellAt(position);
+    const mapId =
+        input.map_id ??
+        (input.owner
+          ? this.world.players.get(input.owner)?.state.map_id
+          : undefined) ??
+        "village",
+      navigation = this.world.navigationFor(mapId);
+    if (!navigation.safe(position)) {
+      const cell = navigation.cellAt(position);
       let best: Point | undefined,
         bestDistance = Infinity;
       for (let radius = 0; radius <= 8 && !best; radius++)
         for (let y = cell.y - radius; y <= cell.y + radius; y++)
           for (let x = cell.x - radius; x <= cell.x + radius; x++) {
-            const candidate = this.world.navigation.center({ x, y }),
+            const candidate = navigation.center({ x, y }),
               distance = Math.hypot(
                 candidate.x - position.x,
                 candidate.y - position.y,
               );
-            if (
-              distance < bestDistance &&
-              this.world.navigation.safe(candidate)
-            ) {
+            if (distance < bestDistance && navigation.safe(candidate)) {
               best = candidate;
               bestDistance = distance;
             }
@@ -132,6 +140,7 @@ export class WorldEconomy {
     const now = Date.now(),
       ground: Ground = {
         id,
+        map_id: mapId,
         gold: input.gold ?? 0,
         item: input.item ? structuredClone(input.item) : undefined,
         position,
@@ -156,11 +165,16 @@ export class WorldEconomy {
     )
       throw new Rejected("loot_protected");
     if (
+      actor.state.map_id !== (ground.map_id ?? "village") ||
       Math.hypot(
         actor.state.position.x - ground.position.x,
         actor.state.position.y - ground.position.y,
       ) > economyRules.pickup_range ||
-      !this.world.combat.visible(actor.state.position, ground.position)
+      !this.world.combat.visible(
+        actor.state.position,
+        ground.position,
+        actor.state.map_id,
+      )
     )
       throw new Rejected("pickup_out_of_range");
     if (ground.item) add(actor.state.inventory, ground.item);
@@ -267,24 +281,31 @@ export class WorldEconomy {
         !ground ||
         typeof ground.id !== "string" ||
         this.ground.has(ground.id) ||
-        !this.world.navigation.bounded(ground.position) ||
+        !this.world
+          .navigationFor(ground.map_id ?? "village")
+          .bounded(ground.position) ||
         (ground.item && !validItem(ground.item)) ||
         !Number.isSafeInteger(ground.gold) ||
         ground.gold < 0
       )
         throw new Error("corrupt_ground_state");
-      this.ground.set(ground.id, structuredClone(ground));
+      this.ground.set(ground.id, {
+        ...structuredClone(ground),
+        map_id: ground.map_id ?? "village",
+      });
     }
     this.expire();
   }
-  snapshot() {
-    return [...this.ground.values()].map((ground) => ({
-      id: ground.id,
-      item: ground.item,
-      gold: ground.gold,
-      position: { ...ground.position },
-      owner: ground.owner,
-      protectedUntil: ground.protectedUntil,
-    }));
+  snapshot(mapId: string = "village") {
+    return [...this.ground.values()]
+      .filter((ground) => (ground.map_id ?? "village") === mapId)
+      .map((ground) => ({
+        id: ground.id,
+        item: ground.item,
+        gold: ground.gold,
+        position: { ...ground.position },
+        owner: ground.owner,
+        protectedUntil: ground.protectedUntil,
+      }));
   }
 }

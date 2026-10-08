@@ -44,7 +44,7 @@ func entered(data: Dictionary) -> void:
 	event_sequence = 0
 	for event in data.get("world",{}).get("events",[]):
 		event_sequence = maxi(event_sequence,int(event.sequence))
-	apply_self({"state":data.state,"cooldowns":{}})
+	apply_self({"state":data.state,"cooldowns":data.get("cooldowns",App.network.latest_self.get("cooldowns",{})),"social":data.get("social",App.network.latest_self.get("social",{}))})
 	var point: Dictionary = data.state.position
 	world.player.position = Vector2(point.x,point.y)
 	world.player.server_position = world.player.position
@@ -57,6 +57,10 @@ func apply_self(data: Dictionary) -> void:
 	# Preserve Dictionary identity shared with inventory/shop widgets.
 	App.character.clear()
 	App.character.merge(state,true)
+	if App.character.map_id != world.map_id:
+		world.changing_map = true
+		world.map_changed.emit(App.character.map_id,Vector2(App.character.position.x,App.character.position.y))
+		return
 	world.player.dead = App.character.hp <= 0
 	world.combat.cooldowns = data.get("cooldowns",{}).duplicate()
 	world.update_resources()
@@ -83,6 +87,7 @@ func normalize_numbers(value: Variant) -> Variant:
 	return value
 
 func apply_snapshot(data: Dictionary) -> void:
+	if data.get("map_id",world.map_id) != world.map_id: return
 	var present: Dictionary = {}
 	for state in data.get("players",[]):
 		var actor: EterPlayer

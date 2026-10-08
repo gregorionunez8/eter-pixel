@@ -13,6 +13,15 @@ var online_character_id := ""
 var credentials: Dictionary = {}
 var network_url := ""
 signal intent_failed(message: String)
+signal portal_result(success: bool)
+
+func travel_portal(portal_id: String) -> void:
+	var reply: Dictionary = await send_intent("portal",{"portal_id":portal_id})
+	if reply.get("ok",false):
+		network.latest_world = reply.data.world
+		network.latest_self = {"state":reply.data.state,"cooldowns":reply.data.get("cooldowns",{}),"social":reply.data.get("social",{})}
+		network.self_received.emit(network.latest_self)
+	portal_result.emit(reply.get("ok",false))
 
 func begin_connection(url: String) -> Error:
 	if is_instance_valid(network):

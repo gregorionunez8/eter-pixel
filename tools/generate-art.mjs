@@ -88,4 +88,16 @@ for(let i=0;i<12;i++){const x=i*16;
  if(i===10){icons.rect(x+6,1,4,4,P.copper);icons.rect(x+5,4,6,3,P.light);icons.ellipse(x+8,10,5,5,'#a9464c');icons.rect(x+5,7,2,5,'#d37969');}
  if(i===11){icons.ellipse(x+8,9,6,5,P.stone);icons.rect(x+3,6,5,6,P.ether);icons.rect(x+9,4,4,7,P.light);}
 }icons.save('items');
-console.log('Generated original world, actor and item PNG assets');
+for(const zone of ['forest','crypt']){
+ const c=new Canvas(128,32),base=zone==='forest'?['#233c34','#5a4c40','#314941','#294954']:['#262733','#454550','#343540','#263b48'];
+ for(let tile=0;tile<4;tile++){c.rect(tile*32,0,32,32,base[tile]);for(let j=0;j<110;j++){const x=tile*32+Math.floor(random()*32),y=Math.floor(random()*32);c.rect(x,y,1+Math.floor(random()*3),1,zone==='forest'?(random()>.5?'#46604a':'#1d302d'):(random()>.5?'#535563':'#181f2b'));}
+  if(zone==='crypt'){for(let y=0;y<32;y+=8){c.rect(tile*32,y,32,1,P.ink);for(let x=y%16?8:0;x<32;x+=16)c.rect(tile*32+x,y,1,8,P.ink);}if(tile===2){c.line(tile*32+8,9,tile*32+18,20,'#9b948a');c.line(tile*32+10,20,tile*32+19,12,'#b0a99b');}if(tile===3){c.rect(tile*32+15,7,2,18,P.ether);c.rect(tile*32+8,15,18,2,'#40747e');}}
+ }c.save('terrain_'+zone);
+}
+const shadowTree=new Canvas(tree.w,tree.h);tree.data.copy(shadowTree.data);for(let i=0;i<shadowTree.data.length;i+=4){shadowTree.data[i]=Math.floor(shadowTree.data[i]*.65);shadowTree.data[i+1]=Math.floor(shadowTree.data[i+1]*.8);shadowTree.data[i+2]=Math.min(255,Math.floor(shadowTree.data[i+2]*1.08));}shadowTree.save('tree_shadow');
+const rock=new Canvas(32,40);rock.ellipse(16,33,15,5,P.ink,130);rock.ellipse(16,23,14,13,P.ink);rock.ellipse(16,22,12,11,P.stone);rock.rect(8,16,9,6,P.light);rock.line(19,13,23,27,P.shadow);rock.save('rock');
+const cryptWall=new Canvas(32,48);cryptWall.rect(0,14,32,33,P.ink);cryptWall.rect(1,15,30,28,'#383646');cryptWall.rect(1,15,30,3,'#686271');for(let y=22;y<45;y+=7){cryptWall.rect(1,y,30,1,P.ink);cryptWall.rect(y%2?10:22,y,1,7,P.ink);}cryptWall.save('crypt_wall');
+const pillar=new Canvas(64,80);pillar.ellipse(32,71,30,7,P.ink,140);pillar.rect(8,11,48,61,P.ink);pillar.rect(13,17,38,49,'#383646');pillar.rect(16,18,6,44,'#686271');pillar.rect(8,9,48,9,'#686271');pillar.rect(9,66,46,7,'#535563');pillar.line(38,16,31,38,P.ink);pillar.line(31,38,37,54,P.ink);pillar.save('crypt_pillar');
+const pond=new Canvas(224,160);pond.rect(0,0,224,160,'#1c3337');for(let j=0;j<650;j++)pond.rect(random()*224,random()*160,3+random()*8,1,random()>.8?'#53828b':'#2d4b52');for(let y=0;y<160;y+=8){pond.rect(0,y,6,4,P.stone);pond.rect(218,y,6,4,P.moss);}for(let x=0;x<224;x+=8){pond.rect(x,0,5,4,P.moss);pond.rect(x,155,6,5,P.stone);}pond.save('pond');
+const portal=new Canvas(64,64);portal.ellipse(32,49,30,12,P.ink,130);portal.ellipse(32,45,27,12,P.light);portal.ellipse(32,45,23,9,'#263b48');for(let i=0;i<12;i++){const a=i*Math.PI/6;portal.rect(31+Math.cos(a)*22,44+Math.sin(a)*8,2,2,P.ether);}portal.rect(11,16,9,29,P.ink);portal.rect(44,16,9,29,P.ink);portal.rect(13,18,5,26,P.stone);portal.rect(46,18,5,26,P.stone);portal.rect(17,9,30,10,P.ink);portal.rect(19,11,26,6,P.light);for(let y=21;y<45;y+=4)portal.rect(27+(y%8?0:4),y,5,2,P.ether);portal.save('portal');
+console.log('Generated original world, actor, item and connected-map PNG assets');

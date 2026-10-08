@@ -148,7 +148,7 @@ export class Social {
       a.map_id === b.map_id &&
       Math.hypot(a.position.x - b.position.x, a.position.y - b.position.y) <=
         socialRules.trade_range &&
-      this.world.combat.visible(a.position, b.position)
+      this.world.combat.visible(a.position, b.position, a.map_id)
     );
   }
   inviteTrade(id: string, target: string) {

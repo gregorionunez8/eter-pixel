@@ -4,39 +4,42 @@ export type Point = { x: number; y: number };
 export const geometry = JSON.parse(
   readFileSync(resolve("../shared/world.json"), "utf8"),
 );
+export const mapsCatalog = JSON.parse(
+  readFileSync(resolve("../shared/maps.json"), "utf8"),
+);
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 export class Navigation {
   private blocked = new Set<number>();
-  constructor() {
-    for (const rect of geometry.obstacles)
+  constructor(readonly data: any = geometry) {
+    for (const rect of this.data.obstacles)
       for (let y = rect.y; y < rect.y + rect.height; y++)
         for (let x = rect.x; x < rect.x + rect.width; x++)
           this.blocked.add(this.id({ x, y }));
   }
   private id(cell: Point) {
-    return cell.y * geometry.width + cell.x;
+    return cell.y * this.data.width + cell.x;
   }
   private cell(id: number): Point {
-    return { x: id % geometry.width, y: Math.floor(id / geometry.width) };
+    return { x: id % this.data.width, y: Math.floor(id / this.data.width) };
   }
   cellAt(point: Point): Point {
     return {
-      x: Math.floor(point.x / geometry.tile),
-      y: Math.floor(point.y / geometry.tile),
+      x: Math.floor(point.x / this.data.tile),
+      y: Math.floor(point.y / this.data.tile),
     };
   }
   center(cell: Point): Point {
     return {
-      x: (cell.x + 0.5) * geometry.tile,
-      y: (cell.y + 0.5) * geometry.tile,
+      x: (cell.x + 0.5) * this.data.tile,
+      y: (cell.y + 0.5) * this.data.tile,
     };
   }
   walkable(cell: Point) {
     return (
       cell.x >= 0 &&
       cell.y >= 0 &&
-      cell.x < geometry.width &&
-      cell.y < geometry.height &&
+      cell.x < this.data.width &&
+      cell.y < this.data.height &&
       !this.blocked.has(this.id(cell))
     );
   }
@@ -46,18 +49,18 @@ export class Navigation {
       Number.isFinite(point.y) &&
       point.x >= 0 &&
       point.y >= 0 &&
-      point.x < geometry.width * geometry.tile &&
-      point.y < geometry.height * geometry.tile
+      point.x < this.data.width * this.data.tile &&
+      point.y < this.data.height * this.data.tile
     );
   }
   safe(point: Point, radius = 7) {
     if (!this.bounded(point) || !this.walkable(this.cellAt(point)))
       return false;
-    for (const rect of geometry.obstacles) {
-      const left = rect.x * geometry.tile,
-        top = rect.y * geometry.tile,
-        right = (rect.x + rect.width) * geometry.tile,
-        bottom = (rect.y + rect.height) * geometry.tile;
+    for (const rect of this.data.obstacles) {
+      const left = rect.x * this.data.tile,
+        top = rect.y * this.data.tile,
+        right = (rect.x + rect.width) * this.data.tile,
+        bottom = (rect.y + rect.height) * this.data.tile;
       const closest = {
         x: Math.max(left, Math.min(right, point.x)),
         y: Math.max(top, Math.min(bottom, point.y)),

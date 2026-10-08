@@ -65,7 +65,7 @@ try {
       const timer = setTimeout(() => {
         child.kill();
         reject(new Error("Godot network timed out"));
-      }, 60000);
+      }, 120000);
       child.once("error", (error) => {
         clearTimeout(timer);
         reject(error);

@@ -13,6 +13,7 @@ if ($LASTEXITCODE -ne 0) { throw "Shared data sync failed" }
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label progression -Expected "PASS progression" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_progression.tscn")
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label inventory -Expected "PASS inventory" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_inventory.tscn")
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label economy -Expected "PASS economy" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_economy.tscn")
+& "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label maps -Expected "PASS maps" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_maps.tscn")
 if ($Graphics) {
     & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label input-runtime -Expected "PASS input runtime" -GodotArgs @("--path", $client, "res://scenes/test_input.tscn")
     & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label inventory-runtime -Expected "PASS inventory runtime" -GodotArgs @("--path", $client, "res://scenes/test_inventory_runtime.tscn")

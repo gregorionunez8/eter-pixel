@@ -1,5 +1,5 @@
 import type { Character } from "./rules.js";
-import { Navigation, geometry, type Point } from "./navigation.js";
+import { Navigation, geometry, mapsCatalog, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
 import { CombatSimulation } from "./combat.js";
 import { WorldEconomy } from "./economy.js";
@@ -14,11 +14,51 @@ type Actor = {
 };
 export class AuthoritativeWorld {
   readonly navigation = new Navigation();
+  readonly navigations = new Map<string, Navigation>(
+    Object.entries(mapsCatalog.maps).map(([id, data]) => [
+      id,
+      new Navigation(data),
+    ]),
+  );
   readonly players = new Map<string, Actor>();
   readonly combat: CombatSimulation;
   readonly economy: WorldEconomy;
   readonly social: Social;
   tick = 0;
+  geometryFor(mapId: string) {
+    if (!Object.hasOwn(mapsCatalog.maps, mapId))
+      throw new Rejected("invalid_map");
+    return mapsCatalog.maps[mapId];
+  }
+  navigationFor(mapId: string) {
+    const nav = this.navigations.get(mapId);
+    if (!nav) throw new Rejected("invalid_map");
+    return nav;
+  }
+  portal(id: string, portalId: string) {
+    const actor = this.players.get(id);
+    if (!actor) throw new Rejected("not_in_world");
+    if (actor.state.hp <= 0) throw new Rejected("dead");
+    const source = this.geometryFor(actor.state.map_id),
+      portal = source.portals.find((p: any) => p.id === portalId);
+    if (
+      !portal ||
+      Math.hypot(
+        actor.state.position.x - portal.x,
+        actor.state.position.y - portal.y,
+      ) > mapsCatalog.portal_range ||
+      !this.combat.visible(actor.state.position, portal, actor.state.map_id)
+    )
+      throw new Rejected("portal_out_of_range");
+    if (!this.navigationFor(portal.target).safe(portal.arrival))
+      throw new Rejected("invalid_portal");
+    actor.state.map_id = portal.target;
+    actor.state.position = { ...portal.arrival };
+    actor.path = [];
+    actor.destination = undefined;
+    this.combat.cancel(id);
+    return actor;
+  }
   constructor(
     random: () => number = Math.random,
     lootRandom: () => number = Math.random,
@@ -33,10 +73,11 @@ export class AuthoritativeWorld {
   ) {
     if (this.players.has(loaded.id)) throw new Rejected("character_in_use");
     const state = structuredClone(loaded.state);
-    if (state.map_id !== geometry.id || !this.navigation.safe(state.position)) {
+    if (!Object.hasOwn(mapsCatalog.maps, state.map_id)) {
       state.map_id = geometry.id;
-      state.position = { ...geometry.spawn };
     }
+    if (!this.navigationFor(state.map_id).safe(state.position))
+      state.position = { ...this.geometryFor(state.map_id).spawn };
     const actor: Actor = {
       id: loaded.id,
       account,
@@ -53,22 +94,23 @@ export class AuthoritativeWorld {
     const actor = this.players.get(id);
     if (!actor) throw new Rejected("not_in_world");
     if (actor.state.hp <= 0) throw new Rejected("dead");
-    if (!this.navigation.bounded(destination))
+    const navigation = this.navigationFor(actor.state.map_id);
+    if (!navigation.bounded(destination))
       throw new Rejected("invalid_destination");
     if (manual) this.combat.cancel(id);
-    const cell = this.navigation.cellAt(destination);
+    const cell = navigation.cellAt(destination);
     if (
       actor.path.length &&
       actor.destination &&
       JSON.stringify(cell) ===
-        JSON.stringify(this.navigation.cellAt(actor.destination))
+        JSON.stringify(navigation.cellAt(actor.destination))
     )
       return;
-    const path = this.navigation.findPath(actor.state.position, destination);
+    const path = navigation.findPath(actor.state.position, destination);
     if (!path.length) {
       if (
-        this.navigation.cellAt(actor.state.position).x === cell.x &&
-        this.navigation.cellAt(actor.state.position).y === cell.y
+        navigation.cellAt(actor.state.position).x === cell.x &&
+        navigation.cellAt(actor.state.position).y === cell.y
       )
         return;
       throw new Rejected("unreachable");
@@ -88,6 +130,7 @@ export class AuthoritativeWorld {
       throw new Error("invalid server delta");
     this.tick++;
     for (const actor of this.players.values()) {
+      const navigation = this.navigationFor(actor.state.map_id);
       if (actor.state.hp <= 0) {
         actor.path = [];
         continue;
@@ -108,7 +151,7 @@ export class AuthoritativeWorld {
           x: current.x + (dx / length) * moved,
           y: current.y + (dy / length) * moved,
         };
-        if (!this.navigation.safe(point)) {
+        if (!navigation.safe(point)) {
           actor.path = [];
           break;
         }
@@ -121,23 +164,25 @@ export class AuthoritativeWorld {
     this.economy.expire();
     this.social.reconcile();
   }
-  snapshot() {
+  snapshot(mapId: string = "village") {
     return {
       tick: this.tick,
-      map_id: geometry.id,
-      enemies: this.combat.snapshot(),
-      events: this.combat.events,
-      ground: this.economy.snapshot(),
-      players: [...this.players.values()].map((actor) => ({
-        id: actor.id,
-        name: actor.state.name,
-        class_id: actor.state.class_id,
-        level: actor.state.level,
-        hp: actor.state.hp,
-        max_hp: actor.state.stats.max_hp,
-        weapon_equipped: Boolean(actor.state.inventory.equipment.weapon),
-        position: { ...actor.state.position },
-      })),
+      map_id: mapId,
+      enemies: this.combat.snapshot(mapId),
+      events: this.combat.events.filter((event) => event.map_id === mapId),
+      ground: this.economy.snapshot(mapId),
+      players: [...this.players.values()]
+        .filter((actor) => actor.state.map_id === mapId)
+        .map((actor) => ({
+          id: actor.id,
+          name: actor.state.name,
+          class_id: actor.state.class_id,
+          level: actor.state.level,
+          hp: actor.state.hp,
+          max_hp: actor.state.stats.max_hp,
+          weapon_equipped: Boolean(actor.state.inventory.equipment.weapon),
+          position: { ...actor.state.position },
+        })),
     };
   }
   remove(id: string) {

@@ -44,6 +44,8 @@ func _ready() -> void:
 	label.add_theme_font_size_override("font_size", 10)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
+	# Reapply height after inherited theme minimum sizes settle in the tree.
+	call_deferred("refresh")
 
 func refresh() -> void:
 	bar.value = state.hp

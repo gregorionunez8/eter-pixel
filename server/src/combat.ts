@@ -1,5 +1,5 @@
 import type { AuthoritativeWorld } from "./world.js";
-import { geometry, type Point } from "./navigation.js";
+import { geometry, mapsCatalog, type Point } from "./navigation.js";
 import {
   combatRules,
   species,
@@ -11,6 +11,7 @@ import {
 import { Rejected } from "./store.js";
 export type Enemy = {
   id: string;
+  map_id: string;
   species: string;
   training: boolean;
   config: any;
@@ -45,8 +46,15 @@ export class CombatSimulation {
     private world: AuthoritativeWorld,
     private random: () => number = Math.random,
   ) {
-    for (const [index, entry] of geometry.monsters.entries())
-      this.addEnemy("monster-" + index, entry.species, entry, false);
+    for (const map of Object.values(mapsCatalog.maps) as any[])
+      for (const [index, entry] of map.monsters.entries())
+        this.addEnemy(
+          entry.id ?? "monster-" + index,
+          entry.species,
+          entry,
+          false,
+          map.id,
+        );
     for (const x of [22, 24, 26])
       this.addEnemy(
         "training-" + x,
@@ -55,7 +63,13 @@ export class CombatSimulation {
         true,
       );
   }
-  private addEnemy(id: string, name: string, home: Point, training: boolean) {
+  private addEnemy(
+    id: string,
+    name: string,
+    home: Point,
+    training: boolean,
+    mapId: string = "village",
+  ) {
     const c = training
       ? {
           ...combatRules.training_target.stats,
@@ -72,6 +86,7 @@ export class CombatSimulation {
       : species[name];
     this.enemies.set(id, {
       id,
+      map_id: mapId,
       species: name,
       training,
       config: c,
@@ -148,16 +163,27 @@ export class CombatSimulation {
     if (battle) battle.selected = undefined;
   }
   private event(kind: string, data: Record<string, unknown>) {
-    this.events.push({ sequence: ++this.sequence, kind, ...data });
+    const id = String(data.actor ?? data.target ?? data.killer ?? "");
+    const mapId =
+      this.world.players.get(id)?.state.map_id ??
+      this.enemies.get(id)?.map_id ??
+      "village";
+    this.events.push({
+      sequence: ++this.sequence,
+      kind,
+      map_id: mapId,
+      ...data,
+    });
     if (this.events.length > 128) this.events.shift();
   }
-  visible(a: Point, b: Point) {
+  visible(a: Point, b: Point, mapId: string = "village") {
+    const navigation = this.world.navigationFor(mapId);
     const steps = Math.ceil(distance(a, b) / 4);
     for (let step = 0; step <= steps; step++) {
       const ratio = steps ? step / steps : 0;
       if (
-        !this.world.navigation.walkable(
-          this.world.navigation.cellAt({
+        !navigation.walkable(
+          navigation.cellAt({
             x: a.x + (b.x - a.x) * ratio,
             y: a.y + (b.y - a.y) * ratio,
           }),
@@ -177,7 +203,8 @@ export class CombatSimulation {
       return;
     }
     const target = this.enemies.get(targetId);
-    if (!target || target.hp <= 0) throw new Rejected("invalid_target");
+    if (!target || target.hp <= 0 || target.map_id !== actor.state.map_id)
+      throw new Rejected("invalid_target");
     battle.selected = targetId;
   }
   cast(id: string, skillId: string) {
@@ -196,8 +223,9 @@ export class CombatSimulation {
       if (
         !target ||
         target.hp <= 0 ||
+        target.map_id !== actor.state.map_id ||
         distance(actor.state.position, target.position) > skill.range ||
-        !this.visible(actor.state.position, target.position)
+        !this.visible(actor.state.position, target.position, actor.state.map_id)
       )
         throw new Rejected("out_of_range");
       victims = [target];
@@ -205,8 +233,13 @@ export class CombatSimulation {
       victims = [...this.enemies.values()].filter(
         (target) =>
           target.hp > 0 &&
+          target.map_id === actor.state.map_id &&
           distance(actor.state.position, target.position) <= skill.range &&
-          this.visible(actor.state.position, target.position),
+          this.visible(
+            actor.state.position,
+            target.position,
+            actor.state.map_id,
+          ),
       );
       if (!victims.length) throw new Rejected("no_targets");
       if (skill.mode === "multiple")
@@ -326,10 +359,11 @@ export class CombatSimulation {
     this.syncRuntime(id, battle);
   }
   private follow(enemy: Enemy, point: Point, delta: number) {
+    const navigation = this.world.navigationFor(enemy.map_id);
     enemy.repath -= delta;
     if (enemy.repath <= 0) {
       enemy.repath = 0.3;
-      const route = this.world.navigation.findPath(enemy.position, point);
+      const route = navigation.findPath(enemy.position, point);
       if (
         !enemy.path.length ||
         !route.length ||
@@ -351,7 +385,7 @@ export class CombatSimulation {
         x: enemy.position.x + (target.x - enemy.position.x) * ratio,
         y: enemy.position.y + (target.y - enemy.position.y) * ratio,
       };
-      if (!this.world.navigation.safe(next, enemy.config.radius)) {
+      if (!navigation.safe(next, enemy.config.radius)) {
         enemy.path = [];
         break;
       }
@@ -370,7 +404,9 @@ export class CombatSimulation {
       if (actor.state.hp <= 0) {
         battle.respawn -= delta;
         if (battle.respawn <= 0) {
-          actor.state.position = { ...geometry.spawn };
+          actor.state.position = {
+            ...this.world.geometryFor(actor.state.map_id).spawn,
+          };
           actor.state.hp = Number(actor.state.stats.max_hp);
           actor.state.mana = Number(actor.state.stats.max_mana);
           this.event("player_respawn", { target: id });
@@ -407,11 +443,12 @@ export class CombatSimulation {
         }
       }
       const target = this.enemies.get(battle.selected ?? "");
-      if (!target || target.hp <= 0) continue;
+      if (!target || target.hp <= 0 || target.map_id !== actor.state.map_id)
+        continue;
       const config = combatRules.classes[actor.state.class_id];
       if (
         distance(actor.state.position, target.position) <= config.auto_range &&
-        this.visible(actor.state.position, target.position)
+        this.visible(actor.state.position, target.position, actor.state.map_id)
       ) {
         actor.path = [];
         if (battle.auto <= 0) {
@@ -457,9 +494,10 @@ export class CombatSimulation {
           if (
             battle.selected === enemy.id &&
             actor.state.hp > 0 &&
+            actor.state.map_id === enemy.map_id &&
             distance(actor.state.position, enemy.position) <=
               enemy.config.attack_range &&
-            this.visible(enemy.position, actor.state.position) &&
+            this.visible(enemy.position, actor.state.position, enemy.map_id) &&
             enemy.attack <= 0
           ) {
             enemy.attack = enemy.config.attack_interval;
@@ -475,6 +513,7 @@ export class CombatSimulation {
         ["detect", "chase", "attack"].includes(enemy.phase) &&
         (!target ||
           target.state.hp <= 0 ||
+          target.state.map_id !== enemy.map_id ||
           distance(enemy.home, target.state.position) >
             enemy.config.leash_radius ||
           distance(enemy.home, enemy.position) > enemy.config.leash_radius)
@@ -489,9 +528,14 @@ export class CombatSimulation {
             .filter(
               (actor) =>
                 actor.state.hp > 0 &&
+                actor.state.map_id === enemy.map_id &&
                 distance(enemy.position, actor.state.position) <=
                   enemy.config.detect_radius &&
-                this.visible(enemy.position, actor.state.position),
+                this.visible(
+                  enemy.position,
+                  actor.state.position,
+                  enemy.map_id,
+                ),
             )
             .sort(
               (a, b) =>
@@ -517,7 +561,7 @@ export class CombatSimulation {
             if (
               distance(enemy.position, target.state.position) <=
                 enemy.config.attack_range &&
-              this.visible(enemy.position, target.state.position)
+              this.visible(enemy.position, target.state.position, enemy.map_id)
             ) {
               enemy.path = [];
               enemy.phase = "attack";
@@ -529,7 +573,7 @@ export class CombatSimulation {
             if (
               distance(enemy.position, target.state.position) >
                 enemy.config.attack_range ||
-              !this.visible(enemy.position, target.state.position)
+              !this.visible(enemy.position, target.state.position, enemy.map_id)
             ) {
               enemy.phase = "chase";
               enemy.repath = 0;
@@ -551,16 +595,18 @@ export class CombatSimulation {
     }
     for (const [id, battle] of this.battles) this.syncRuntime(id, battle);
   }
-  snapshot() {
-    return [...this.enemies.values()].map((enemy) => ({
-      id: enemy.id,
-      species: enemy.species,
-      name: enemy.training ? "Efigie" : enemy.config.name,
-      level: enemy.config.level ?? 0,
-      hp: enemy.hp,
-      max_hp: enemy.config.hp,
-      phase: enemy.phase,
-      position: { ...enemy.position },
-    }));
+  snapshot(mapId: string = "village") {
+    return [...this.enemies.values()]
+      .filter((enemy) => enemy.map_id === mapId)
+      .map((enemy) => ({
+        id: enemy.id,
+        species: enemy.species,
+        name: enemy.training ? "Efigie" : enemy.config.name,
+        level: enemy.config.level ?? 0,
+        hp: enemy.hp,
+        max_hp: enemy.config.hp,
+        phase: enemy.phase,
+        position: { ...enemy.position },
+      }));
   }
 }

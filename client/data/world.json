@@ -1236,5 +1236,52 @@
       "x": 1456,
       "y": 880
     }
+  ],
+  "terrain": "terrain",
+  "ambient": "#d4e3f5",
+  "ground_color": "#34413c",
+  "path_color": "#796654",
+  "regions": [
+    {
+      "x": 21,
+      "y": 0,
+      "width": 6,
+      "height": 32,
+      "tile": 1
+    },
+    {
+      "x": 0,
+      "y": 16,
+      "width": 48,
+      "height": 4,
+      "tile": 1
+    },
+    {
+      "x": 20,
+      "y": 12,
+      "width": 8,
+      "height": 9,
+      "tile": 2
+    }
+  ],
+  "labels": [
+    {
+      "x": 1170,
+      "y": 651,
+      "text": "CERCADO DE LA NIEBLA"
+    }
+  ],
+  "portals": [
+    {
+      "id": "village_forest",
+      "name": "Bosque de las Sombras",
+      "x": 784,
+      "y": 976,
+      "target": "forest",
+      "arrival": {
+        "x": 176,
+        "y": 176
+      }
+    }
   ]
 }

@@ -25,8 +25,9 @@ func _draw() -> void:
 	var scale_factor := area / Vector2(world.SIZE*world.TILE)
 	for y in range(world.SIZE.y):
 		for x in range(world.SIZE.x):
-			var color := Color("34413c")
-			if (x >= 21 and x <= 26) or (y >= 16 and y <= 19): color = Color("796654")
+			var color := Color(world.geometry.ground_color)
+			for region in world.geometry.regions:
+				if Rect2i(int(region.x),int(region.y),int(region.width),int(region.height)).has_point(Vector2i(x,y)): color = Color(world.geometry.path_color)
 			draw_rect(Rect2(inset+Vector2(x,y)*world.TILE*scale_factor,Vector2.ONE*world.TILE*scale_factor),color)
 	for rect in world.solid_rectangles:
 		draw_rect(Rect2(inset+rect.position*scale_factor,rect.size*scale_factor),Color("1c2229"))
@@ -35,7 +36,9 @@ func _draw() -> void:
 	for target in world.targets:
 		if target is EterMonster and not target.dead:
 			draw_circle(inset+target.position*scale_factor,2 if expanded else 1,Color("b94c4c"))
+	for portal in world.portals:
+		draw_circle(inset+portal.position*scale_factor,3 if expanded else 2,Color("8175a8"))
 	draw_circle(inset+world.player.position*scale_factor,3 if expanded else 2,Color("64c8cf"))
 	if expanded:
-		draw_string(ThemeDB.fallback_font,Vector2(10,16),"ALDEA DE ÉTER · M: cerrar",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("d5aa64"))
-		draw_string(ThemeDB.fallback_font,Vector2(10,size.y-10),"Vos · Servicios · Enemigos · Salida sur",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("b4aca0"))
+		draw_string(ThemeDB.fallback_font,Vector2(10,16),str(world.geometry.name).to_upper()+" · M: cerrar",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("d5aa64"))
+		draw_string(ThemeDB.fallback_font,Vector2(10,size.y-10),"Vos · Servicios · Enemigos · Portales",HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("b4aca0"))

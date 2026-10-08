@@ -12,6 +12,8 @@ Se evaluó ImageGen disponible. Para la primera iteración se elige generación 
 
 Licencias: código y arte creados en este repositorio para ÉTER; sin dependencias gráficas externas. La fuente predeterminada del motor es provisional.
 
+Tres mapas: Bosque usa verdes oscuros/teal, árboles sombríos, roca y estanque; Cripta mampostería violeta/gris, pilares, huesos y glifos. Ocho PNG originales nuevos: terrain_forest/terrain_crypt (cuatro tiles32), tree_shadow64x80, rock32x40, crypt_wall32x48, crypt_pillar64x80, pond224x160, portal64x64. Total30PNG locales generados reproduciblemente por tools/generate-art.mjs. Portales luminosos con nombres de destino, ambientación y minimapa por catálogo; capturas reales640x360 inspeccionadas. Barras de vida compactas5px se reaplican tras tema. Continúa arte provisional coherente, sin música ni acabado comercial final.
+
 Recursos presentes: assets/terrain.png (atlas 32x32), traveler.png (32 frames 32x48, 8 direcciones), tree.png, house.png, shop.png, smith.png, shrine.png y wall.png. Generador local tools/generate-art.mjs, determinista y sin dependencias npm. Sombras raster transparentes, edificios con tejados y mampostería; no bloques planos como escenario final.
 
 Clases: warrior.png, mage.png y elf.png son hojas 128x384 con cuatro frames en ocho direcciones. Siluetas con acero/espada, túnica violeta/bastón de éter y cuero verde/arco. Previews a escala entera 3x, sin filtro. El equipo visual inicial forma parte de la hoja; cambios de equipo dinámicos quedan para inventario.

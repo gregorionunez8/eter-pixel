@@ -149,16 +149,24 @@ export async function startService(
     }
     world.step(Math.min(0.1, (now - lastTick) / 1000));
     lastTick = now;
-    const payload = JSON.stringify({
-      v: 1,
-      event: "snapshot",
-      data: world.snapshot(),
-    });
+    const snapshots = new Map<string, string>();
     for (const socket of entered.keys())
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(payload);
         const id = entered.get(socket)!,
           actor = world.players.get(id);
+        if (actor) {
+          const mapId = actor.state.map_id;
+          if (!snapshots.has(mapId))
+            snapshots.set(
+              mapId,
+              JSON.stringify({
+                v: 1,
+                event: "snapshot",
+                data: world.snapshot(mapId),
+              }),
+            );
+          socket.send(snapshots.get(mapId)!);
+        }
         if (actor)
           socket.send(
             JSON.stringify({
@@ -254,6 +262,24 @@ export async function startService(
             } else {
               if (!account) throw new Rejected("unauthenticated");
               switch (request.op) {
+                case "portal": {
+                  fields(data, ["portal_id"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  await commitAction(() =>
+                    world.portal(characterId!, data.portal_id as string),
+                  );
+                  world.social.cancel(characterId);
+                  world.social.reconcile();
+                  const actor = world.players.get(characterId)!;
+                  result = {
+                    state: actor.state,
+                    cooldowns:
+                      world.combat.battles.get(characterId)?.cooldowns ?? {},
+                    social: world.social.snapshot(characterId),
+                    world: world.snapshot(actor.state.map_id),
+                  };
+                  break;
+                }
                 case "chat": {
                   fields(data, ["channel", "message"]);
                   if (!characterId) throw new Rejected("not_in_world");
@@ -386,7 +412,7 @@ export async function startService(
                   result = {
                     character_id: actor.id,
                     state: actor.state,
-                    world: world.snapshot(),
+                    world: world.snapshot(actor.state.map_id),
                   };
                   break;
                 }

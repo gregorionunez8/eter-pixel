@@ -1,7 +1,13 @@
 extends Node2D
 
-const SIZE := Vector2i(48, 32)
+signal map_changed(map_id: String,point: Vector2)
+var SIZE := Vector2i(48, 32)
 const TILE := 32
+var map_id := "village"
+var geometry: Dictionary = {}
+var portals: Array[Node2D] = []
+var pending_portal: Node2D
+var changing_map := false
 var navigation := EterNavigation.new()
 var blocked: Array[Vector2i] = []
 var solid_rectangles: Array[Rect2] = []
@@ -46,11 +52,15 @@ var social_ui: Control
 
 func _ready() -> void:
 	economy_random.randomize()
-	terrain = load("res://assets/terrain.png")
+	map_id = App.character.get("map_id","village")
+	var maps: Dictionary = Catalog.read("maps").maps
+	if not maps.has(map_id): map_id = "village"
+	geometry = maps[map_id]
+	SIZE = Vector2i(int(geometry.width),int(geometry.height))
+	terrain = load("res://assets/%s.png" % geometry.terrain)
 	entities.y_sort_enabled = true
 	add_child(entities)
-	var geometry := Catalog.read("world")
-	assert(int(geometry.width) == SIZE.x and int(geometry.height) == SIZE.y and int(geometry.tile) == TILE,"Village geometry dimensions mismatch")
+	assert(int(geometry.tile) == TILE,"Map tile dimensions mismatch")
 	spawn_position = Vector2(geometry.spawn.x,geometry.spawn.y)
 	for entry in geometry.obstacles:
 		add_obstacle(Rect2i(int(entry.x),int(entry.y),int(entry.width),int(entry.height)),entry.texture)
@@ -59,12 +69,16 @@ func _ready() -> void:
 	player.navigation = navigation
 	player.replicated = App.online
 	player.position = spawn_position
+	if App.character.get("position") is Dictionary:
+		var point: Dictionary = App.character.position
+		var saved_position := Vector2(float(point.get("x",spawn_position.x)),float(point.get("y",spawn_position.y)))
+		if is_safe(saved_position,7): player.position = saved_position
 	entities.add_child(player)
 	player.camera.limit_left = 0
 	player.camera.limit_top = 0
 	player.camera.limit_right = SIZE.x * TILE
 	player.camera.limit_bottom = SIZE.y * TILE
-	for x in [22, 24, 26]:
+	for x in [22, 24, 26] if map_id == "village" else []:
 		var target := EterTrainingTarget.new()
 		target.position = Vector2(x * TILE + 16, 27 * TILE + 16)
 		target.set_meta("server_id","training-%d" % x)
@@ -80,7 +94,7 @@ func _ready() -> void:
 		monster.navigation = navigation
 		monster.player = player
 		monster.combat = combat
-		monster.set_meta("server_id","monster-%d" % monster_index)
+		monster.set_meta("server_id",entry.get("id","monster-%d" % monster_index))
 		entities.add_child(monster)
 		if App.online:
 			monster.set_physics_process(false)
@@ -100,13 +114,20 @@ func _ready() -> void:
 		npc.position = Vector2(entry.x,entry.y)
 		entities.add_child(npc)
 		npcs.append(npc)
-	if not App.online and not App.character.get("starter_ground_claimed",false):
+	for entry in geometry.portals:
+		var portal := preload("res://scripts/portal.gd").new()
+		portal.definition = entry
+		portal.position = Vector2(entry.x,entry.y)
+		entities.add_child(portal)
+		portals.append(portal)
+	if not App.online and map_id == "village" and not App.character.get("starter_ground_claimed",false):
 		spawn_ground_item(EterInventory.make_item("bronze_sword",1,"magic"),spawn_position+Vector2(-96,32))
 		ground_items[0].starter_reward = true
 	var ambient := CanvasModulate.new()
-	ambient.color = Color(0.83, 0.89, 0.96)
+	ambient.color = Color(geometry.ambient)
 	add_child(ambient)
 	if App.online:
+		App.portal_result.connect(func(success: bool): if not success: changing_map = false)
 		online_world = preload("res://scripts/online_world.gd").new()
 		online_world.world = self
 		add_child(online_world)
@@ -147,7 +168,7 @@ func build_hud() -> void:
 	hud = CanvasLayer.new()
 	add_child(hud)
 	var location := Label.new()
-	location.text = "ALDEA DE ÉTER"
+	location.text = str(geometry.name).to_upper()
 	location.position = Vector2(16, 10)
 	location.add_theme_font_size_override("font_size", 14)
 	location.modulate = Color("d5aa64")
@@ -528,10 +549,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			handle_primary(get_global_transform_with_canvas().affine_inverse() * pointer_position)
 
 func handle_primary(point: Vector2) -> void:
-	if player.dead:
+	if player.dead or changing_map:
 		return
 	pending_pickup = null
 	pending_npc = null
+	pending_portal = null
+	for portal in portals:
+		if point.distance_to(portal.position) < 28:
+			combat.select_target(null)
+			if player.position.distance_to(portal.position)<=float(Catalog.read("maps").portal_range) and combat.line_of_sight(portal.position):
+				travel(portal)
+			else:
+				pending_portal = portal
+				player.move_to(portal.position)
+			return
 	for npc in npcs:
 		if point.distance_to(npc.position+Vector2(0,-16)) < 24:
 			combat.select_target(null)
@@ -560,7 +591,27 @@ func set_destination(point: Vector2) -> void:
 	marker = player.destination
 	queue_redraw()
 
+func travel(portal: Node2D) -> void:
+	if changing_map or player.dead or player.position.distance_to(portal.position)>float(Catalog.read("maps").portal_range) or not combat.line_of_sight(portal.position): return
+	held = false
+	pending_portal = null
+	changing_map = true
+	if App.online:
+		# App outlives the scene that a successful transition replaces.
+		App.travel_portal(portal.definition.id)
+	else:
+		App.character.map_id = portal.definition.target
+		App.character.position = portal.definition.arrival.duplicate()
+		map_changed.emit(App.character.map_id,Vector2(App.character.position.x,App.character.position.y))
+
 func _process(delta: float) -> void:
+	if changing_map: return
+	if not App.online:
+		App.character.map_id = map_id
+		App.character.position = {"x":player.position.x,"y":player.position.y}
+	if is_instance_valid(pending_portal) and player.position.distance_to(pending_portal.position)<=float(Catalog.read("maps").portal_range) and combat.line_of_sight(pending_portal.position):
+		travel(pending_portal)
+		return
 	if is_instance_valid(pending_npc) and player.position.distance_to(pending_npc.position) <= float(EterEconomy.rules().npc_range) and combat.line_of_sight(pending_npc.position):
 		open_shop(pending_npc)
 		pending_npc = null
@@ -600,6 +651,7 @@ func update_resources() -> void:
 	experience_bar.value = App.character.experience
 
 func is_safe(point: Vector2, radius: float = 6.5) -> bool:
+	if not Rect2(Vector2.ZERO,Vector2(SIZE)*TILE).has_point(point): return false
 	for rect in solid_rectangles:
 		var closest := Vector2(clampf(point.x, rect.position.x, rect.end.x), clampf(point.y, rect.position.y, rect.end.y))
 		if point.distance_to(closest) < radius:
@@ -612,13 +664,11 @@ func _draw() -> void:
 	for y in range(SIZE.y):
 		for x in range(SIZE.x):
 			var tile := 0
-			if (x >= 21 and x <= 26) or (y >= 16 and y <= 19):
-				tile = 1
-			if x >= 20 and x <= 27 and y >= 12 and y <= 20:
-				tile = 2
+			for region in geometry.regions:
+				if Rect2i(int(region.x),int(region.y),int(region.width),int(region.height)).has_point(Vector2i(x,y)): tile = int(region.tile)
 			draw_texture_rect_region(terrain, Rect2(x * TILE, y * TILE, TILE, TILE), Rect2(tile * TILE, 0, TILE, TILE))
-	draw_string(ThemeDB.fallback_font, Vector2(666, 951), "BOSQUE DE LAS SOMBRAS  ↓", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("d5aa64"))
-	draw_string(ThemeDB.fallback_font, Vector2(1170, 651), "CERCADO DE LA NIEBLA", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("d5aa64"))
+	for entry in geometry.labels:
+		draw_string(ThemeDB.fallback_font,Vector2(entry.x,entry.y),entry.text,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("d5aa64"))
 	if marker.x >= 0:
 		draw_arc(marker, 8, 0, TAU, 12, Color("64c8cf"), 1)
 		draw_line(marker + Vector2(-12, 0), marker + Vector2(12, 0), Color("64c8cf"))

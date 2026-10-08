@@ -235,6 +235,31 @@ func run() -> void:
 	else:
 		check(not world.ground_items.is_empty(),"second player observes monster loot")
 	check(not unsafe_frame,"all online player frames remain outside obstacles")
+	world = main.world
+	world.handle_primary(world.portals[0].position)
+	await wait_until(func(): return main.world.map_id=="forest","mouse travels to forest authoritatively",15000)
+	await wait_until(func(): return main.world.online_world.remotes.size()==1,"both players meet in forest",15000)
+	world = main.world
+	check(world.targets[0].get_meta("server_id")=="forest-monster-0","forest replaces old targets")
+	check(world.targets.size() == 6,"forest excludes village training targets")
+	if graphics:
+		await RenderingServer.frame_post_draw
+		check(get_tree().root.get_texture().get_image().save_png("res://../artifacts/online-forest-%d.png" % role)==OK,"forest rendered capture")
+	world.handle_primary(world.portals[1].position)
+	await wait_until(func(): return main.world.map_id=="crypt","mouse travels to crypt authoritatively",30000)
+	await wait_until(func(): return main.world.online_world.remotes.size()==1,"both players meet in crypt",15000)
+	world = main.world
+	check(world.targets[0].get_meta("server_id")=="crypt-monster-0","crypt replaces old targets")
+	if graphics:
+		await RenderingServer.frame_post_draw
+		check(get_tree().root.get_texture().get_image().save_png("res://../artifacts/online-crypt-%d.png" % role)==OK,"crypt rendered capture")
+	App.network.close()
+	await wait_until(func(): return not App.network.was_open,"crypt disconnect detected")
+	await get_tree().create_timer(0.5).timeout
+	reply = await App.reconnect()
+	check(reply.get("ok",false) and reply.data.state.map_id=="crypt","SQL reconnect retains crypt")
+	if reply.get("ok",false): world.online_world.entered(reply.data)
+	check(main.world.map_id=="crypt" and world.is_safe(world.player.position,7),"reconnected crypt position safe")
 	App.end_online()
 	main.queue_free()
 	await get_tree().create_timer(0.3).timeout

@@ -56,6 +56,14 @@ static func load_character(path: String = "") -> Dictionary:
 		if not character.attributes.has(attribute) or not EterInventory.integer(character.attributes[attribute]) or character.attributes[attribute] < 0 or character.attributes[attribute] > Catalog.read("progression").attribute_cap:
 			return {}
 	character.stats = EterCharacter.derive(character)
+	var maps: Dictionary = Catalog.read("maps").maps
+	if not character.has("map_id"): character.map_id = "village"
+	if not character.map_id is String or not maps.has(character.map_id): return {}
+	if not character.has("position"): character.position = maps[character.map_id].spawn.duplicate()
+	if not character.position is Dictionary or not character.position.has_all(["x","y"]): return {}
+	for coordinate in [character.position.x,character.position.y]:
+		if not coordinate is float and not coordinate is int: return {}
+	if not Rect2(0,0,int(maps[character.map_id].width)*32,int(maps[character.map_id].height)*32).has_point(Vector2(character.position.x,character.position.y)): return {}
 	character.hp = clampi(int(character.hp),1,int(character.stats.max_hp))
 	character.mana = clampi(int(character.mana),0,int(character.stats.max_mana))
 	return character

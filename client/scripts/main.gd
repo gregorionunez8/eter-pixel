@@ -200,8 +200,16 @@ func open_world() -> void:
 	if is_instance_valid(creation):
 		creation.queue_free()
 	world = preload("res://scenes/world.tscn").instantiate()
+	world.map_changed.connect(change_map)
 	add_child(world)
 	App.save_character()
+
+func change_map(_map_id: String,_point: Vector2) -> void:
+	var previous := world
+	world = null
+	remove_child(previous)
+	previous.queue_free()
+	open_world()
 
 func exit_game() -> void:
 	get_tree().quit()
