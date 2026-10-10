@@ -40,6 +40,8 @@ func send_intent(operation: String, data: Dictionary) -> Dictionary:
 func error_message(code: String) -> String:
 	var social_errors := {"party_unavailable":"No se puede invitar a ese jugador ahora.","trade_unavailable":"Acercate a un jugador vivo que no esté comerciando.","trade_revision":"La oferta cambió. Revisala antes de confirmar.","trade_missing":"El comercio se cerró o canceló.","equipped_offer":"Desequipá el objeto antes de ofrecerlo.","invalid_offer":"Revisá los objetos y el oro ofrecidos.","chat_rate":"Esperá un momento antes de enviar otro mensaje.","invalid_chat":"El mensaje está vacío, es demasiado largo o contiene saltos de línea."}
 	if social_errors.has(code): return social_errors[code]
+	var quest_errors := {"quest_not_ready":"El encargo aún no está listo o ya fue entregado.","quest_locked":"Completá primero el encargo anterior.","quest_already_accepted":"Este encargo ya fue aceptado.","npc_out_of_range":"Acercate al NPC correspondiente.","gold_cap":"Límite de oro alcanzado.","gold_limit":"Límite de oro alcanzado."}
+	if quest_errors.has(code): return quest_errors[code]
 	return {"disconnected":"Conexión perdida. Usá Reconectar en el menú.","timeout":"Sin respuesta. Revisá el estado antes de repetir.","insufficient_gold":"Oro insuficiente", "inventory_full":"Inventario lleno", "out_of_range":"Acercate al objetivo", "cooldown":"Habilidad en enfriamiento", "insufficient_mana":"Maná insuficiente", "character_in_use":"Personaje conectado; esperá el guardado", "invalid_credentials":"Cuenta o contraseña incorrecta", "persistence_failed":"No se pudo guardar. Operación rechazada."}.get(code,"Operación rechazada (%s)" % code)
 
 func end_online() -> void:

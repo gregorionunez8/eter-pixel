@@ -6,42 +6,70 @@ func _ready() -> void:
 	main.enter_world("Ventana","mage")
 	await get_tree().create_timer(0.2).timeout
 	var world: Node2D = main.world
-	check(world.health_bar.value == App.character.hp and world.mana_bar.value == App.character.mana,"resource bars initial values")
+	if not check(world.health_bar.value == App.character.hp and world.mana_bar.value == App.character.mana,"resource bars initial values"):
+		await finish()
+		return
 	App.character.hp = 50
 	App.character.mana = 60
 	EterProgression.gain_experience(App.character,20)
 	world.update_resources()
-	check(world.health_bar.value == 50 and world.mana_bar.value == 60 and world.experience_bar.value == 20,"resource bars track changes")
+	if not check(world.health_bar.value == 50 and world.mana_bar.value == 60 and world.experience_bar.value == 20,"resource bars track changes"):
+		await finish()
+		return
 	await press(KEY_M)
-	check(world.map_panel.visible and not world.inventory_ui.visible,"M opens map")
+	if not check(world.map_panel.visible and not world.inventory_ui.visible,"M opens map"):
+		await finish()
+		return
 	await RenderingServer.frame_post_draw
-	check(get_viewport().get_texture().get_image().save_png("res://../artifacts/map-runtime.png") == OK,"map capture saved")
+	if not check(get_viewport().get_texture().get_image().save_png("res://../artifacts/map-runtime.png") == OK,"map capture saved"):
+		await finish()
+		return
 	await press(KEY_ESCAPE)
-	check(not world.map_panel.visible and not world.pause_menu.visible,"Esc closes map first")
+	if not check(not world.map_panel.visible and not world.pause_menu.visible,"Esc closes map first"):
+		await finish()
+		return
 	await click(world.minimap.get_global_rect().get_center())
-	check(world.map_panel.visible,"minimap click opens map")
+	if not check(world.map_panel.visible,"minimap click opens map"):
+		await finish()
+		return
 	await press(KEY_I)
-	check(world.inventory_ui.visible and not world.map_panel.visible,"I replaces map with inventory")
+	if not check(world.inventory_ui.visible and not world.map_panel.visible,"I replaces map with inventory"):
+		await finish()
+		return
 	await press(KEY_C)
-	check(world.character_panel.visible and not world.inventory_ui.visible,"C replaces inventory")
+	if not check(world.character_panel.visible and not world.inventory_ui.visible,"C replaces inventory"):
+		await finish()
+		return
 	await press(KEY_C)
 	await press(KEY_ENTER)
-	check(world.chat_ui.visible and world.chat_ui.input.has_focus(),"Enter focuses chat")
+	if not check(world.chat_ui.visible and world.chat_ui.input.has_focus(),"Enter focuses chat"):
+		await finish()
+		return
 	world.chat_ui.input.text = "Mensaje de prueba"
 	await press(KEY_ENTER)
-	check("No enviado: sin conexión" in world.chat_ui.history.get_parsed_text(),"offline chat refuses pretending delivery")
+	if not check("No enviado: sin conexión" in world.chat_ui.history.get_parsed_text(),"offline chat refuses pretending delivery"):
+		await finish()
+		return
 	world.chat_ui.append_message("Prueba","[color=red]literal[/color]")
-	check("[color=red]literal[/color]" in world.chat_ui.history.get_parsed_text(),"chat treats markup as plain text")
+	if not check("[color=red]literal[/color]" in world.chat_ui.history.get_parsed_text(),"chat treats markup as plain text"):
+		await finish()
+		return
 	await RenderingServer.frame_post_draw
-	check(get_viewport().get_texture().get_image().save_png("res://../artifacts/ui-runtime.png") == OK,"HUD and chat capture saved")
+	if not check(get_viewport().get_texture().get_image().save_png("res://../artifacts/ui-runtime.png") == OK,"HUD and chat capture saved"):
+		await finish()
+		return
 	await press(KEY_ESCAPE)
-	check(not world.chat_ui.visible and not world.pause_menu.visible,"Esc closes chat first")
+	if not check(not world.chat_ui.visible and not world.pause_menu.visible,"Esc closes chat first"):
+		await finish()
+		return
 	await press(KEY_ESCAPE)
 	await click(world.pause_menu.get_child(0).get_node("Settings").get_global_rect().get_center())
 	var dialog: AcceptDialog
 	for child in world.hud.get_children():
 		if child is AcceptDialog: dialog = child
-	check(is_instance_valid(dialog) and dialog.visible,"menu button opens actual settings dialog")
+	if not check(is_instance_valid(dialog) and dialog.visible,"menu button opens actual settings dialog"):
+		await finish()
+		return
 	if is_instance_valid(dialog):
 		dialog.hide()
 		dialog.canceled.emit()
@@ -50,9 +78,13 @@ func _ready() -> void:
 	for dimensions in [Vector2i(960,540),Vector2i(1280,720)]:
 		get_window().size = dimensions
 		await get_tree().create_timer(0.1).timeout
-		check(world.minimap.get_global_rect().end.x <= 640 and world.inventory_ui.get_global_rect().end.y <= 360,"UI stays in design viewport at "+str(dimensions))
+		if not check(world.minimap.get_global_rect().end.x <= 640 and world.inventory_ui.get_global_rect().end.y <= 360,"UI stays in design viewport at "+str(dimensions)):
+			await finish()
+			return
 		await RenderingServer.frame_post_draw
-		check(get_viewport().get_texture().get_image().get_size() == Vector2i(640,360),"integer design rendering at "+str(dimensions))
+		if not check(get_viewport().get_texture().get_image().get_size() == Vector2i(640,360),"integer design rendering at "+str(dimensions)):
+			await finish()
+			return
 	get_window().size = original_size
 	main.queue_free()
 	await get_tree().process_frame

@@ -280,6 +280,19 @@ export async function startService(
                   };
                   break;
                 }
+                case "quest_accept":
+                case "quest_claim": {
+                  fields(data, ["quest_id"]);
+                  if (!characterId) throw new Rejected("not_in_world");
+                  result = await commitAction(() =>
+                    world.quest(
+                      characterId!,
+                      data.quest_id as string,
+                      request.op === "quest_claim",
+                    ),
+                  );
+                  break;
+                }
                 case "chat": {
                   fields(data, ["channel", "message"]);
                   if (!characterId) throw new Rejected("not_in_world");

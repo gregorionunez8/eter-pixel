@@ -86,6 +86,8 @@ export function createCharacter(name: string, classId: string) {
     gold: 0,
     starter_ground_claimed: false,
     reset_count: 0,
+    quests: {} as
+      Record<string, { kills: number; claimed: boolean }> | undefined,
     combat_state: {
       cooldown_deadlines: {} as Record<string, number>,
       respawn_deadline: 0,

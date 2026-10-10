@@ -1,5 +1,41 @@
 # Reporte de pruebas
 
+2026-10-10 — Estabilización de la base existente. Godot 4.7.2 estable / OpenGL Compatibility NVIDIA, Node24.19, PostgreSQL18.4 local. Sin rediseño, contenido nuevo ni instalaciones globales.
+
+| Prueba ejecutada | Resultado |
+| --- | --- |
+| tools/test.ps1 -Godot C:/Godot/godot.exe -Graphics | Exit0: import/smoke, movement544, characters33, combat209, monsters1376, progression138, inventory83, economy405, maps73, quests87 headless/90 gráfico, input9, inventory runtime22, economy runtime17, UI18 y save reload. |
+| invoke-godot: test_economy.tscn (después de agregar checks de load/cap) | Exit0,407 checks. Sale/credit rechazan exceso sin mutación; máximo exacto permitido; créditos negativos/enormes rechazados; save/load validan cap. |
+| invoke-godot: test_quest_reload.tscn | Exit0,5 checks. Proceso Godot nuevo carga las tres quests entregadas y conecta el personaje cargado con quest_ui. |
+| invoke-godot: test_save_reload.tscn (guardas finales) | Exit0. UID/rareza/mejora/oro/inventario sobreviven proceso nuevo. |
+| invoke-godot: test_maps.tscn -- --capture-maps | Exit0,77 checks. Aldea/Bosque/Cripta y cuatro transiciones; capturas y barras de enemigos. |
+| tools/test-online-world.ps1 -Godot C:/Godot/godot.exe -Graphics | Exit0,144 checks (78+66). Dos clientes reales, lobby por mouse, SQL, movimiento/colisiones, compra/equipo/drop/pickup, combate, social/comercio, viaje caminando por los tres mapas y reconexión. |
+| godot-network-runner.js C:/Godot/godot.exe world | Exit0,136 checks (74+62), dos clientes headless con el mismo recorrido autoritativo. |
+| tools/test-online-quests.ps1 -Godot C:/Godot/godot.exe -Graphics | Exit0,133 checks. Las tres quests por UI, aceptar/kills reales/volver NPC/entregar, recompensas de oro/XP/items/rareza, doble entrega rechazada, reconexiones en aceptación/primera kill/entrega y diario final comprobado en SQL. Iria/Daro y comprar/vender/mejorar/reparar tras desgaste real. |
+| tools/test-online-quests.ps1 -Godot C:/Godot/godot.exe (headless, guardas finales) | Exit0,122 checks. Repite los tres recorridos, operaciones de tienda y SQL con precondiciones de listado/arma protegidas. |
+| tools/test-server.ps1 | Exit0,82 tests y smoke del entrypoint compilado con SQL/WebSocket/cierre limpio. Incluye trigger SQL fallido/reintento/reinicio para quests y rechazo de inyección de kills/recompensas. |
+| godot-network-runner.js C:/Godot/godot.exe world-failure --fail-role0 | Exit1 esperado en1,8s: falla una precondición, cierra su escenario, cancela el otro cliente y cierra servidor/SQL; sin SCRIPT ERROR, acceso nil, cascadas ni timeout. Logs godot-world-failure-{0,1}.log. |
+| tools/test-online-transport.ps1 -Godot C:/Godot/godot.exe | Exit0,34 checks (17+17), dos transportes Godot reales y reconexión SQL. |
+| git diff --check | Exit0. |
+
+Aceptación local y online: Iria abre provisiones, Daro herrería, compra/venta/reparación/mejora; Encargos abre, acepta y muestra activas; 3 arañas,2 lobos exclusivamente Bosque y Guardián exclusivamente Cripta; progreso por kills reales, retorno/entrega/recompensa única y persistencia. Local: Quest y Shop mutuamente excluyentes; Escape cierra Quest antes del menú. Curación real conserva cooldown al viajar y volver y sigue descontando tiempo; cast durante cooldown se rechaza. Pickup al cap conserva entidad/saldo; quest al cap conserva diario/inventario/recompensas; venta al cap conserva item. Sin parse/runtime errors en las ejecuciones finales exitosas. Personaje entra al mundo; movimiento/combate/inventario y tres mapas siguen pasando.
+
+Alcance de evidencia: atributos1000/RNG repetible únicamente en fixtures de quests para acelerar ataques reales; no se escriben kills/claimed en los recorridos UI. La prueba local posiciona al jugador cerca de NPCs/enemigos/portales, por eso no acredita caminar toda la aventura local. La online sí usa navegación/autoataques del servidor y vuelve caminando. Tests de reglas para cap usan diarios fixture separados. Screenshots640x360 en artifacts/quest-*.png y online-quest-*.png; inspeccionadas ventanas local/online. Arte y balance no rediseñados. Logs artifacts/{quest-stability,quest-stability-runtime,quest-reload,economy,audit-save-reload,audit-maps-graphics}.*.log, godot-graphics-{0,1}.log y godot-quests-graphics-0.log; no se versionan DB/logs/screenshots.
+
+Fallos intermedios, no contados como éxitos: test nuevo inicialmente no infería count_before (tipo explícito corregido); fixture local estaba sobre árbol y física lo alejaba del NPC (punto seguro); comparación de Dictionary con números JSON int/float (comparación semántica); test XP asumía acumulación directa aunque experiencia se descuenta al subir nivel (se verifica XP acumulada con umbrales). Dos clicks online iniciales fallaron: lobby antes de layout y Encargos tapado por botón Jugadores; espera de layout y orden de hijos HUD corregidos. Una selección de enemigo mediante handler de clic resultó inestable junto a drops/respawn; prueba de quests usa el consumidor existente combat.select_target y autoataques reales; el test de dos clientes sigue verificando selección por mouse. El timeout inicial de parse motivó abortar errores de script durante ejecución; las ejecuciones posteriores fallidas finalizaron rápidamente y sin cascadas.
+
+Archivos modificados en este objetivo:
+
+- Cliente: client/scripts/{app,economy,main,online_world,quest_rules,quest_ui,save_game,shop_ui,world}.gd.
+- Tests existentes: client/tests/{economy,economy_runtime,input_runtime,inventory_runtime,save_reload,test_online_world,ui_runtime}.gd; server/tests/godot-network-runner.ts.
+- Tests nuevos: client/tests/{quest_stability,quest_reload,online_quests}.gd y sus .uid; client/scenes/test_{quest_stability,quest_reload,online_quests}.tscn.
+- Herramientas: tools/invoke-godot.ps1, tools/test.ps1, tools/test-online-quests.ps1.
+- Documentación: docs/PROGRESS.md, docs/TEST_REPORT.md, docs/NEXT_TASK.md.
+
+El árbol ya contenía la integración parcial de backend y cliente: server/src/{economy,rules,service,store,world}.ts, server/tests/quests.test.ts y quests-sql.test.ts, client/scripts/character_rules.gd, quest_rules/quest_ui y sus UID, cambios en save_game/shop_ui/world. Se preservan e incluyen en el hito porque habilitan las quests existentes; no se rehizo el backend. client/project.godot tenía cambios previos de configuración/formato del editor y permanece intacto, fuera del commit. Catálogos/art/mapas/controles no modificados.
+
+Problemas conocidos fuera de este objetivo: suelo local temporal al reconstruir mapas/recargar, arte provisional y balance de aventura sin QA manual prolongada; sin prueba de carga masiva ni exportación. Ninguno de los fallos solicitados permanece abierto según estas pruebas.
+
 2026-10-08, modelo misiones: tools/test-server.ps1 exit0,81 tests+smoke (77 anteriores+4 nuevos). Diario legacy/forma/caps, aceptación/requisito/no duplicado, muertes no retroactivas y filtro especie/mapa, tres recompensas con apilado/niveles y rarezas, segundo claim tras JSON rechazado, grid lleno/cap oro preservan estado completo. Primer intento3/4 falló antes de ejecutar claim porque fixture pila20 superaba stack permitido; fixture usa catálogo ahora y4/4 pasan. No prueba todavía muertes del World, API, persistencia SQL de misiones ni UI; integración pendiente.
 
 2026-10-08, mapas conectados: tools/test-server.ps1 exit0,77 tests+smoke con PostgreSQL18.4 real. Cinco tests nuevos comprueban tres geometrías, centros/rutas/spawns seguros, portales recíprocos, presupuesto de movimiento sin atravesar obstáculos, aislamiento combate/IA/NPC/loot/snapshots, rechazo por distancia/muerte/mapa ajeno, checkpoint antes de ack, fallo SQL y rollback de mapa, reinicio y posición/cooldown persistente en Cripta. Fixture SQL55445 separado. Primera ejecución76/77 falló llegada exacta al portal forest_crypt: y800 no coincidía con centro A*; corregido a784, regenerado/sincronizado y suite completa pasó. No se cuenta el intento fallido como éxito.

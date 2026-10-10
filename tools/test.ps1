@@ -14,7 +14,10 @@ if ($LASTEXITCODE -ne 0) { throw "Shared data sync failed" }
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label inventory -Expected "PASS inventory" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_inventory.tscn")
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label economy -Expected "PASS economy" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_economy.tscn")
 & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label maps -Expected "PASS maps" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_maps.tscn")
+& "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label quest-stability -Expected "PASS quest stability" -TimeoutSeconds 90 -GodotArgs @("--headless", "--path", $client, "res://scenes/test_quest_stability.tscn")
+& "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label quest-reload -Expected "PASS quest reload" -GodotArgs @("--headless", "--path", $client, "res://scenes/test_quest_reload.tscn")
 if ($Graphics) {
+    & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label quest-stability-runtime -Expected "PASS quest stability" -TimeoutSeconds 90 -GodotArgs @("--path", $client, "res://scenes/test_quest_stability.tscn")
     & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label input-runtime -Expected "PASS input runtime" -GodotArgs @("--path", $client, "res://scenes/test_input.tscn")
     & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label inventory-runtime -Expected "PASS inventory runtime" -GodotArgs @("--path", $client, "res://scenes/test_inventory_runtime.tscn")
     & "$PSScriptRoot/invoke-godot.ps1" -Godot $Godot -Label economy-runtime -Expected "PASS economy runtime" -GodotArgs @("--path", $client, "res://scenes/test_economy_runtime.tscn")

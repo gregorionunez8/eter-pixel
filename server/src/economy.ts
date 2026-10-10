@@ -16,6 +16,7 @@ import {
   validItem,
 } from "./inventory.js";
 import { Rejected } from "./store.js";
+import { recordQuestKill } from "./quests.js";
 export const economyRules = JSON.parse(
   readFileSync(resolve("../shared/economy.json"), "utf8"),
 );
@@ -36,6 +37,8 @@ export class WorldEconomy {
     private random: () => number = Math.random,
   ) {
     world.combat.onDefeated = (killer, enemy) => {
+      const actor = world.players.get(killer);
+      if (actor) recordQuestKill(actor.state, enemy.species, enemy.map_id);
       const loot = enemy.config.loot;
       if (this.random() < loot.chance) {
         const gold =

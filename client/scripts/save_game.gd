@@ -2,6 +2,8 @@ class_name EterSave
 extends RefCounted
 
 static func save(character: Dictionary, path: String = "") -> bool:
+	if not EterQuests.valid(character.get("quests",{})): return false
+	if not EterInventory.integer(character.get("gold")) or character.gold < 0 or character.gold > EterEconomy.rules().gold_cap: return false
 	if not character.has_all(["name","class_id","inventory"]) or not EterCharacter.valid_name(character.name) or not character.inventory is Dictionary or not EterInventory.valid(character.inventory,character.class_id):
 		return false
 	var local_slot := path.is_empty()
@@ -50,12 +52,14 @@ static func load_character(path: String = "") -> Dictionary:
 	for key in ["level","experience","attribute_points","hp","mana","reset_count","gold"]:
 		if not EterInventory.integer(character[key]):
 			return {}
-	if character.level < 1 or character.level > Catalog.read("progression").max_level or character.experience < 0 or character.attribute_points < 0 or character.gold < 0:
+	if character.level < 1 or character.level > Catalog.read("progression").max_level or character.experience < 0 or character.attribute_points < 0 or character.gold < 0 or character.gold > EterEconomy.rules().gold_cap:
 		return {}
 	for attribute in EterCharacter.definitions().attributes:
 		if not character.attributes.has(attribute) or not EterInventory.integer(character.attributes[attribute]) or character.attributes[attribute] < 0 or character.attributes[attribute] > Catalog.read("progression").attribute_cap:
 			return {}
 	character.stats = EterCharacter.derive(character)
+	if not EterQuests.valid(character.get("quests",{})): return {}
+	if not character.has("quests"): character.quests = {}
 	var maps: Dictionary = Catalog.read("maps").maps
 	if not character.has("map_id"): character.map_id = "village"
 	if not character.map_id is String or not maps.has(character.map_id): return {}

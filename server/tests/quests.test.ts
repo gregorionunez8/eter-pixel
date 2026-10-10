@@ -32,7 +32,7 @@ test("quest journal accepts legacy saves and rejects malformed or forged progres
 test("quest acceptance requires predecessor and kill progress filters species/map and caps objective", () => {
   const state: QuestCharacter = createCharacter("Mision", "mage");
   recordQuestKill(state, "spider", "village");
-  assert.equal(state.quests, undefined);
+  assert.deepEqual(state.quests, {});
   assert.throws(() => acceptQuest(state, "fangs_in_the_mist"), /quest_locked/);
   acceptQuest(state, "silk_on_the_road");
   assert.throws(

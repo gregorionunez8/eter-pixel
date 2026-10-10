@@ -13,6 +13,7 @@ var stock_ids: Array[String] = []
 func _ready() -> void:
 	position = Vector2(128,63)
 	size = Vector2(496,246)
+	z_index = 10
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("111522")
 	style.border_color = Color("796654")
@@ -21,6 +22,14 @@ func _ready() -> void:
 	title.position = Vector2(10,5)
 	title.add_theme_font_size_override("font_size",12)
 	add_child(title)
+	var quests := Button.new()
+	quests.name = "quests"
+	quests.text = "Encargos"
+	quests.position = Vector2(394,3)
+	quests.size = Vector2(92,22)
+	quests.add_theme_font_size_override("font_size",10)
+	quests.pressed.connect(func(): requested.emit("quests",""))
+	add_child(quests)
 	stock.position = Vector2(10,28)
 	stock.size = Vector2(220,150)
 	owned.position = Vector2(240,28)

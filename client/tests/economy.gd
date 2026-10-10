@@ -39,6 +39,27 @@ func _ready() -> void:
 	weapon.durability = 90
 	before = character.duplicate(true)
 	check(not EterEconomy.repair(character,weapon.uid) and character == before,"unaffordable repair atomic")
+	var capped := EterCharacter.create("Limite","warrior")
+	var ore := EterInventory.make_item("ore",1)
+	check(EterInventory.add(capped.inventory,ore),"gold cap sale fixture")
+	capped.gold = int(EterEconomy.rules().gold_cap)
+	var capped_before := capped.duplicate(true)
+	check(not EterEconomy.sell(capped,ore.uid) and capped == capped_before,"sale at cap preserves item and balance")
+	check(not EterEconomy.credit(capped,1) and capped == capped_before,"pickup/reward credit at cap rejects atomically")
+	check(not EterEconomy.credit(capped,-1) and capped == capped_before,"negative credit rejected")
+	capped.gold -= 4
+	check(EterEconomy.sell(capped,ore.uid) and capped.gold == int(EterEconomy.rules().gold_cap),"sale can reach exact cap")
+	check(not EterEconomy.credit(capped,9223372036854775807),"huge credit cannot overflow")
+	check(EterSave.save(capped,"res://../artifacts/gold-cap-save.json"),"save accepts exact cap")
+	capped.gold += 1
+	check(not EterSave.save(capped,"res://../artifacts/gold-cap-save.json"),"save rejects above-cap balance")
+	check(int(EterSave.load_character("res://../artifacts/gold-cap-save.json").get("gold",-1)) == int(EterEconomy.rules().gold_cap),"load accepts exact gold cap")
+	var invalid_payload := JSON.stringify(capped)
+	var invalid_file := FileAccess.open("res://../artifacts/gold-cap-invalid.json",FileAccess.WRITE)
+	if invalid_file:
+		invalid_file.store_string(JSON.stringify({"version":1,"payload":invalid_payload,"checksum":invalid_payload.sha256_text()}))
+		invalid_file.close()
+	check(invalid_file != null and EterSave.load_character("res://../artifacts/gold-cap-invalid.json").is_empty(),"load rejects above-cap balance even with valid checksum")
 	character.gold = 1000
 	while EterInventory.add(character.inventory,EterInventory.make_item("ore",20)):
 		pass

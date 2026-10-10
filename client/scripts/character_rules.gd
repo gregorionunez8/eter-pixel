@@ -25,6 +25,7 @@ static func create(value: String, class_id: String) -> Dictionary:
 	result["hp"] = result.stats.max_hp
 	result["mana"] = result.stats.max_mana
 	result["reset_count"] = 0
+	result["quests"] = {}
 	return result
 
 static func formula(coefficients: Dictionary, attributes: Dictionary, level: int) -> int:

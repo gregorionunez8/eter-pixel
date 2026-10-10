@@ -40,6 +40,7 @@ var economy_random := RandomNumberGenerator.new()
 var npcs: Array[Node2D] = []
 var pending_npc: Node2D
 var active_npc: Node2D
+var quest_ui: Panel
 var shop_ui: Control
 var minimap: Control
 var map_panel: Control
@@ -256,6 +257,10 @@ func build_hud() -> void:
 	shop_ui.character = App.character
 	shop_ui.requested.connect(transact)
 	hud.add_child(shop_ui)
+	quest_ui = preload("res://scripts/quest_ui.gd").new()
+	quest_ui.character = App.character
+	quest_ui.requested.connect(request_quest)
+	hud.add_child(quest_ui)
 	minimap = Control.new()
 	minimap.set_script(preload("res://scripts/map_ui.gd"))
 	minimap.world = self
@@ -302,6 +307,9 @@ func build_hud() -> void:
 		bar.size = Vector2(180,5)
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hud.add_child(bar)
+	# Control input follows tree order: windows must also be above HUD buttons.
+	hud.move_child(shop_ui,hud.get_child_count()-1)
+	hud.move_child(quest_ui,hud.get_child_count()-1)
 	update_resources()
 
 func toggle_map() -> void:
@@ -310,18 +318,20 @@ func toggle_map() -> void:
 	inventory_ui.hide()
 	character_panel.hide()
 	shop_ui.hide()
+	quest_ui.hide()
 	held = false
 
 func toggle_social() -> void:
 	if not App.online: return
 	chat_ui.hide(); chat_ui.input.release_focus()
-	inventory_ui.hide(); character_panel.hide(); shop_ui.hide(); map_panel.hide()
+	inventory_ui.hide(); character_panel.hide(); shop_ui.hide(); quest_ui.hide(); map_panel.hide()
 	social_ui.toggle()
 	held = false
 
 func open_shop(npc: Node2D) -> void:
 	if player.dead or player.position.distance_to(npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(npc.position): return
 	active_npc = npc
+	quest_ui.hide()
 	if is_instance_valid(social_ui): social_ui.hide()
 	shop_ui.shop_id = npc.shop_id
 	shop_ui.refresh()
@@ -332,9 +342,40 @@ func open_shop(npc: Node2D) -> void:
 	held = false
 	player.path.clear()
 
+func request_quest(operation: String, id: String) -> bool:
+	if operation not in ["quest_accept","quest_claim"] or quest_ui.busy or not quest_ui.visible or not is_instance_valid(active_npc) or player.dead:
+		return false
+	if player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position):
+		return false
+	var definition: Dictionary = EterQuests.definitions().get(id,{})
+	if definition.is_empty() or definition.npc != active_npc.shop_id or definition.map_id != map_id:
+		return false
+	quest_ui.busy = true
+	quest_ui.refresh()
+	var accepted := false
+	if App.online:
+		var reply: Dictionary = await App.send_intent(operation,{"quest_id":id})
+		accepted = reply.get("ok",false)
+	else:
+		var error := EterQuests.claim(App.character,id) if operation == "quest_claim" else EterQuests.accept(App.character,id)
+		accepted = error.is_empty()
+		if accepted:
+			inventory_changed()
+			inventory_ui.refresh()
+		else:
+			message_label.text = App.error_message(error)
+			message_left = 3
+	quest_ui.busy = false
+	quest_ui.refresh()
+	return accepted
+
 func transact(operation: String, value: String) -> bool:
 	if not shop_ui.visible or not is_instance_valid(active_npc) or player.dead or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position):
 		return false
+	if operation == "quests":
+		shop_ui.hide()
+		quest_ui.open(active_npc.shop_id)
+		return true
 	if App.online:
 		var data := {"definition":value,"shop_id":active_npc.shop_id} if operation == "buy" else {"uid":value,"shop_id":active_npc.shop_id} if operation == "sell" else {"uid":value}
 		App.send_intent(operation,data)
@@ -403,7 +444,10 @@ func pickup_item(ground: EterGroundItem) -> bool:
 		App.send_intent("pickup",{"ground_id":str(ground.get_meta("server_id",""))})
 		return true
 	if ground.gold > 0:
-		App.character.gold += ground.gold
+		if not EterEconomy.credit(App.character,ground.gold):
+			message_label.text = "Límite de oro alcanzado"
+			message_left = 3
+			return false
 	elif not EterInventory.add(App.character.inventory,ground.item):
 		message_label.text = "Inventario lleno"
 		message_left = 2
@@ -478,6 +522,8 @@ func reward_monster(target: EterTrainingTarget) -> void:
 	if not target is EterMonster:
 		return
 	var levels := EterProgression.gain_experience(App.character, int(target.config.experience))
+	EterQuests.record_kill(App.character,target.species_id,map_id)
+	if quest_ui.visible: quest_ui.refresh()
 	var loot := EterEconomy.loot(target.species_id,economy_random)
 	spawn_gold(loot.gold,target.position+Vector2(-16,0))
 	for index in range(loot.items.size()):
@@ -503,6 +549,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if is_instance_valid(social_ui) and social_ui.visible:
 			social_ui.hide()
 			return
+		if quest_ui.visible:
+			quest_ui.hide()
+			return
 		if map_panel.visible:
 			map_panel.hide()
 			return
@@ -522,12 +571,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ENTER:
 		if is_instance_valid(social_ui): social_ui.hide()
+		quest_ui.hide()
 		chat_ui.open()
 		held = false
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C:
 		if is_instance_valid(social_ui): social_ui.hide()
 		shop_ui.hide()
+		quest_ui.hide()
 		map_panel.hide()
 		character_panel.visible = not character_panel.visible
 		inventory_ui.hide()
@@ -535,6 +586,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
 		if is_instance_valid(social_ui): social_ui.hide()
 		shop_ui.hide()
+		quest_ui.hide()
 		map_panel.hide()
 		inventory_ui.visible = not inventory_ui.visible
 		character_panel.hide()
@@ -615,8 +667,9 @@ func _process(delta: float) -> void:
 	if is_instance_valid(pending_npc) and player.position.distance_to(pending_npc.position) <= float(EterEconomy.rules().npc_range) and combat.line_of_sight(pending_npc.position):
 		open_shop(pending_npc)
 		pending_npc = null
-	if shop_ui.visible and (player.dead or not is_instance_valid(active_npc) or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range)):
+	if (shop_ui.visible or quest_ui.visible) and (player.dead or not is_instance_valid(active_npc) or player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position)):
 		shop_ui.hide()
+		quest_ui.hide()
 	save_tick += delta
 	if save_tick >= 30:
 		save_tick = 0

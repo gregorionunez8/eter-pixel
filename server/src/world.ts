@@ -4,6 +4,8 @@ import { Rejected } from "./store.js";
 import { CombatSimulation } from "./combat.js";
 import { WorldEconomy } from "./economy.js";
 import { Social } from "./social.js";
+import { acceptQuest, claimQuest, questCatalog } from "./quests.js";
+import { economyRules } from "./economy.js";
 type Actor = {
   id: string;
   account: string;
@@ -25,6 +27,33 @@ export class AuthoritativeWorld {
   readonly economy: WorldEconomy;
   readonly social: Social;
   tick = 0;
+  quest(id: string, questId: string, claim: boolean) {
+    const actor = this.players.get(id);
+    if (!actor) throw new Rejected("not_in_world");
+    if (actor.state.hp <= 0) throw new Rejected("dead");
+    if (
+      typeof questId !== "string" ||
+      !Object.hasOwn(questCatalog.definitions, questId)
+    )
+      throw new Rejected("quest_missing");
+    const quest = questCatalog.definitions[questId];
+    const npc = this.geometryFor(actor.state.map_id).npcs.find(
+      (n: any) => n.id === quest.npc,
+    );
+    if (
+      actor.state.map_id !== quest.map_id ||
+      !npc ||
+      Math.hypot(
+        actor.state.position.x - npc.x,
+        actor.state.position.y - npc.y,
+      ) > economyRules.npc_range ||
+      !this.combat.visible(actor.state.position, npc, actor.state.map_id)
+    )
+      throw new Rejected("npc_out_of_range");
+    if (claim) claimQuest(actor.state, questId);
+    else acceptQuest(actor.state, questId);
+    return { quests: actor.state.quests };
+  }
   geometryFor(mapId: string) {
     if (!Object.hasOwn(mapsCatalog.maps, mapId))
       throw new Rejected("invalid_map");

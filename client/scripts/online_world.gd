@@ -28,6 +28,8 @@ func connection_lost() -> void:
 	world.chat_ui.connected = false
 	chat_sequence = 0
 	world.social_ui.hide()
+	world.shop_ui.hide()
+	world.quest_ui.hide()
 	world.held = false
 	world.pending_pickup = null
 	world.pending_npc = null
@@ -64,6 +66,7 @@ func apply_self(data: Dictionary) -> void:
 	world.player.dead = App.character.hp <= 0
 	world.combat.cooldowns = data.get("cooldowns",{}).duplicate()
 	world.update_resources()
+	if world.quest_ui.visible: world.quest_ui.refresh()
 	world.chat_ui.connected = App.network.was_open
 	world.social_ui.refresh(data.get("social",{}))
 	var signature := JSON.stringify([App.character.inventory,App.character.gold])

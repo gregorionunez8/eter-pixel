@@ -4,6 +4,16 @@ extends RefCounted
 static func rules() -> Dictionary:
 	return Catalog.read("economy")
 
+static func credit(character: Dictionary, amount: int) -> bool:
+	if not EterInventory.integer(character.get("gold")) or amount < 0:
+		return false
+	var balance := int(character.gold)
+	var cap := int(rules().gold_cap)
+	if balance < 0 or balance > cap or amount > cap-balance:
+		return false
+	character.gold = balance+amount
+	return true
+
 static func buy(character: Dictionary, shop: String, definition: String) -> bool:
 	if not rules().shops.has(shop) or not definition in rules().shops[shop].stock:
 		return false
@@ -29,10 +39,9 @@ static func sell(character: Dictionary, uid: String) -> bool:
 	if item.is_empty() or character.inventory.equipment.values().has(uid):
 		return false
 	var price := sale_price(item)
-	if price <= 0:
+	if price <= 0 or not credit(character,price):
 		return false
 	EterInventory.remove(character.inventory,uid)
-	character.gold += price
 	return true
 
 static func repair_cost(item: Dictionary) -> int:

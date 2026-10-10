@@ -1,6 +1,18 @@
 # Progreso
 
-Fase actual: contenido jugable, modelo de misiones verificado; integración pendiente.
+Fase actual: estabilización de la base existente (2026-10-10). Tiendas y Encargos conectados; tres quests locales y online verificadas. Esta sección reemplaza el estado anterior de integración pendiente; las entradas inferiores documentan hitos históricos.
+
+La causa del fallo de tiendas era World.open_shop llamando quest_ui.hide() con quest_ui declarado pero sin instancia. build_hud ahora crea el panel existente, asigna App.character, conecta requested a request_quest y lo agrega al HUD. Shop y Quest se cierran mutuamente, Escape cierra Encargos, otras ventanas coordinan su visibilidad y distancia/vida/LOS cierran la interacción. Los paneles se ordenan después de los botones HUD: en online, Jugadores interceptaba el botón Encargos aunque el panel se dibujara encima; z_index por sí solo no cambia el orden de input.
+
+request_quest utiliza EterQuests existente en local y sólo quest_accept/quest_claim con quest_id en online. El cliente no manda kills ni premios. Muertes reales actualizan el diario; snapshots self conservan la identidad de App.character y refrescan Encargos. Busy bloquea solicitudes simultáneas; recompensas siguen las reglas existentes sobre draft, sin doble entrega. JSON local y PostgreSQL guardan el progreso. No se reimplementó el backend que ya estaba en el árbol de trabajo.
+
+Main conserva cooldowns locales al reconstruir el mapa y descuenta el tiempo real de carga; online mantiene la autoridad de deadlines del servidor. EterEconomy.credit centraliza las sumas locales y rechaza exceder gold_cap=1.000.000.000 del catálogo compartido: pickup conserva el oro del suelo, venta conserva el item y quest rechaza todo el premio. Save/load también rechazan saldos fuera del límite.
+
+Tests de UI, inventario, tiendas y mundo online detienen el escenario y liberan recursos ante una precondición fallida. El runner cancela el otro Godot y cierra SQL; invoke-godot y runner detectan errores de script/parse mientras el proceso sigue activo. Fallo controlado: salida esperada 1 en 1,8 s, sin cascadas ni timeout.
+
+Evidencia: regresión local completa -Graphics PASS, quests 87 checks headless/90 renderer y recarga en proceso nuevo 5; economía 407; mapas gráficos77; dos mundos online gráficos144; quests online renderer133 y headless122 con compras/venta/mejora/desgaste/reparación, muertes reales y reconexiones SQL. Backend82+smoke PASS. Las fixtures de quest usan atributos1000 y RNG repetible para acelerar combate: no acreditan balance. Recorrido local sitúa al jugador en puntos seguros; online camina a NPCs/enemigos/portales por navegación del servidor. Capturas quest-*.png y online-quest-*.png, logs en artifacts. Detalle reproducible y fallos intermedios en TEST_REPORT.
+
+No se agregaron mapas, NPCs, enemigos, quests, items, controles, audio ni nuevos sistemas. Suelo local temporal, arte provisional y QA de carga/exportación siguen fuera de este objetivo.
 
 Incremento misiones: shared/quests.json define Seda en el camino (3 arañas), Colmillos en la niebla (2 lobos del Bosque) y Juramento bajo la piedra (Guardián de Cripta), diálogos originales y recompensas encadenadas. server/src/quests.ts implementa diario compatible con saves sin misiones, aceptar con requisito, progreso limitado por especie/mapa y recompensa sobre draft de inventario/oro/XP. Fallo por grid lleno/cap de oro conserva todo; claim repetido después de serializar se rechaza. Backend81 tests+smoke PASS (cuatro nuevos). Fixture inicial de grid lleno usaba pila20 inválida; corregido a stack del catálogo y volvió a pasar. Este modelo todavía no está conectado a mensajes, muertes reales, SQL ni UI; no se declara misión jugable. Siguiente: integración autoritativa y local, diálogo/diario, pruebas SQL y ejecución real.
 

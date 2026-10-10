@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { createCharacter, type Character } from "./rules.js";
 import type { Ground } from "./economy.js";
 import { valid as validInventory } from "./inventory.js";
+import { validJournal } from "./quests.js";
 
 export class Rejected extends Error {}
 async function hash(password: string, salt: string): Promise<Buffer> {
@@ -124,6 +125,8 @@ export class Store {
       [accountId, id],
     );
     if (!result.rowCount) throw new Rejected("character_missing");
+    if (!validJournal(result.rows[0].state.quests))
+      throw new Rejected("invalid_quests");
     return result.rows[0] as { id: string; state: Character; revision: number };
   }
   // Called by trusted simulation only; there is no save-state message in the protocol.
@@ -162,6 +165,7 @@ export class Store {
     for (const actor of actors) {
       if (
         !validInventory(actor.state.inventory, actor.state.class_id) ||
+        !validJournal(actor.state.quests) ||
         !Number.isSafeInteger(actor.state.gold) ||
         actor.state.gold < 0
       )

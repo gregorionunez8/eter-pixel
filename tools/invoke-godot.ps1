@@ -9,7 +9,17 @@ $stderr = Join-Path $logs "$Label.stderr.log"
 $quotedArgs = $GodotArgs | ForEach-Object { '"' + $_ + '"' }
 $process = Start-Process -FilePath $exe -ArgumentList $quotedArgs -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 $process.Handle | Out-Null
-if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+
+$deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+while (-not $process.WaitForExit(200) -and [DateTime]::UtcNow -lt $deadline) {
+    $diagnostic = Get-Content $stderr -Raw -ErrorAction SilentlyContinue
+    if ($diagnostic -match 'SCRIPT ERROR|Parse Error|ERROR:(?! FAIL )|Assertion failed' ) {
+        Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
+        $process.WaitForExit()
+        break
+    }
+}
+if (-not $process.HasExited) {
     Stop-Process -Id $process.Id
     throw "$Label timed out after $TimeoutSeconds seconds"
 }

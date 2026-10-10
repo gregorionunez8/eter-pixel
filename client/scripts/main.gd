@@ -206,10 +206,16 @@ func open_world() -> void:
 
 func change_map(_map_id: String,_point: Vector2) -> void:
 	var previous := world
+	var cooldowns: Dictionary = previous.combat.cooldowns.duplicate()
+	var transition_started := Time.get_ticks_msec()
 	world = null
 	remove_child(previous)
 	previous.queue_free()
 	open_world()
+	if not App.online:
+		var elapsed := (Time.get_ticks_msec()-transition_started)/1000.0
+		for skill in cooldowns:
+			world.combat.cooldowns[skill] = maxf(0,float(cooldowns[skill])-elapsed)
 
 func exit_game() -> void:
 	get_tree().quit()
