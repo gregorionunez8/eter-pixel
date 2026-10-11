@@ -20,3 +20,7 @@ Verificación reproducible, PowerShell en C:/eter-pixel:
 No reiniciar una prueba porque el log esté quieto: seguir su session_id. Quests online camina las rutas de los tres mapas y puede tardar varios minutos (timeout global360s, precondiciones acotadas12–35s, aborta el primer fallo). El runner cancela otros peers y cierra SQL al fallar. invoke-godot corta errores de parse/runtime mientras ejecuta. Godot clases nuevas necesitan import; tests con App/Catalog usan escenas Node, no --script SceneTree. Capturas/logs/DB en artifacts, ignorados Git; UID y escenas versionados.
 
 Si el usuario pide otra tarea, trabajar desde esta base y reproducir primero el fallo concreto. No iniciar cofres/audio/boss/items/mapas/editor ni rediseño por cuenta propia. Limitaciones preexistentes: suelo local temporal, arte provisional, party sin reparto automático de XP/loot, reconexión explícita, QA masiva/exportación/balance general sin acreditar. Fixtures actuales no prueban balance.
+
+
+## ÉTER Studio — incremento en curso, 10/10/2026
+Continuar objetivo activo: previews y test tools, item visual/options/libros, consumo runtime de balance/audio, paridad cliente/servidor y regresiones finales. No declarar completado ÉTER Studio con este primer incremento.

@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/studio_ui.gd" id="1"]
+[node name="StudioUITest" type="Node"]
+script = ExtResource("1")

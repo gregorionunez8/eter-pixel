@@ -69,3 +69,7 @@ Recuperación real Windows: wrapper embedded-postgres.stop usaba taskkill y dej�
 Próxima tarea actual: integrar transporte EterNetwork con mundo visual/UI online e interpolación; luego reconexión jugable, social, mapas/contenido y entrega. Dos procesos Godot headless verifican transporte, pero el mundo visual sigue offline. Objetivo no cumplido.
 
 Hitos Git estables: 81c59f1 fundaciones; cc31582 movimiento/aldea; 4aaf987 personajes; 327e859 combate/input. Verificación integrada `./tools/test.ps1 -Graphics` exit 0. Objetivo completo sigue activo: aún faltan criterios críticos de MMORPG.
+
+
+## ÉTER Studio — incremento en curso, 10/10/2026
+Plugin Main Screen, registry sobre shared, formularios CRUD, búsqueda/referencias, validación, guardado con conflicto externo/backup y Build Content. Editor pixel-art y mapa visual conectados; adapters de spots GS/TS conservan legacy. Objetivo completo todavía en curso.

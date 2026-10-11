@@ -1,0 +1,22 @@
+{
+  "definitions": {
+    "shop": {
+      "name": "Iria",
+      "type": "shop",
+      "shop_id": "shop",
+      "visual": "mage_unarmed",
+      "facing": 2,
+      "interaction_radius": 64,
+      "dialogue": "Provisiones y encargos del refugio."
+    },
+    "smith": {
+      "name": "Daro",
+      "type": "shop",
+      "shop_id": "smith",
+      "visual": "warrior_unarmed",
+      "facing": 2,
+      "interaction_radius": 64,
+      "dialogue": "Forja y encargos del refugio."
+    }
+  }
+}

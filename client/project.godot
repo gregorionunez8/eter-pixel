@@ -1,8 +1,8 @@
-; ÉTER - Godot 4
+; ?TER - Godot 4
 config_version=5
 
 [application]
-config/name="ÉTER"
+config/name="?TER"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
@@ -30,3 +30,8 @@ environment/defaults/default_clear_color=Color(0.067, 0.082, 0.133, 1)
 2d_physics/layer_1="World"
 2d_physics/layer_2="Actors"
 2d_physics/layer_3="Interaction"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/eter_studio/plugin.cfg")
+

@@ -1,0 +1,40 @@
+{
+  "player": {
+    "starting_level": 1,
+    "starting_stat_points": 0,
+    "experience_multiplier": 1
+  },
+  "monster": {
+    "hp": 1,
+    "damage": 1,
+    "defense": 1,
+    "experience": 1,
+    "gold": 1,
+    "drop_rate": 1,
+    "respawn": 1
+  },
+  "skill": {
+    "damage": 1,
+    "mana": 1,
+    "cooldown": 1,
+    "pve": 1,
+    "pvp": 1
+  },
+  "economy": {
+    "buy_multiplier": 1,
+    "sell_multiplier": 1,
+    "durability_scaling": 1
+  },
+  "reset": {
+    "cost": 0,
+    "starting_level": 1,
+    "points": 0,
+    "bonus": 0,
+    "max_resets": 0,
+    "stats_behavior": "initial",
+    "skill_behavior": "keep",
+    "inventory_behavior": "keep",
+    "equipment_behavior": "keep",
+    "quest_behavior": "keep"
+  }
+}

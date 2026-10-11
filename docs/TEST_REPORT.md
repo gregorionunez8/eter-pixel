@@ -103,3 +103,7 @@ Primeros tests gráficos de drag fallaron: los eventos inyectados no sincronizab
 `PASS inventory runtime: 20 checks` exit0: I, tres arrastres (grid/equip/desequip), efectos en combate, sprite sin arma, drop/pickup mismo UID, poción/consumo, snapshot real y replacement Windows, load y corrupción/checksum. Fixtures en artifacts/inventory-save.json y inventory-expectation.json, no en user://. `PASS save reload` en proceso Godot nuevo verifica UID, rareza, upgrade, oro y estructura. No acredita PostgreSQL.
 
 Regresión `./tools/test.ps1 -Graphics` exit0 con import/smoke, movimiento544/clases33/combate209/monstruos1376/progresión138/inventario82/input9/inventario gráfico20 y recarga nueva. Ajuste posterior de chance100% revalidó inventario83; iconos ampliados a escala entera y tooltip revalidados con inventario gráfico20 y recarga nueva. Capturas inventory-runtime.png y menu.png inspeccionadas. Menú con Continuar último cabe en640x360; cuadrícula y equipo caben sin recortes.
+
+
+## ÉTER Studio — incremento en curso, 10/10/2026
+Evidencia real: import de plugin sin parse errors; Studio registry 12 checks, UI 5, assets 8, maps 9. Regresión local existente: movement 544, characters 33, combat 209, monsters 1376, progression 138, inventory 83, economy 407, maps 73, quests 87, reload 5. Backend npm test: 82/82 con PostgreSQL real. Esta regresión local antecede al adapter de spots; repetir tras integración runtime. Fallos detectados y corregidos: filtro vacío, Array.get incorrecto, opciones readonly.
