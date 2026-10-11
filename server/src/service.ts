@@ -525,6 +525,11 @@ export async function startService(
                   });
                   break;
                 }
+                case "reset":
+                  fields(data,["npc_id"]);
+                  if(!characterId)throw new Rejected("not_in_world");
+                  result=await commitAction(()=>world.reset(characterId!,data.npc_id as string));
+                  break;
                 case "unequip":
                   fields(data, ["slot"]);
                   if (!characterId) throw new Rejected("not_in_world");

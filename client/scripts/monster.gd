@@ -4,6 +4,7 @@ extends EterTrainingTarget
 signal phase_changed(value: String)
 
 var species_id := "spider"
+var spawn_overrides: Dictionary = {}
 var config: Dictionary
 var navigation: EterNavigation
 var combat: Node
@@ -21,6 +22,8 @@ static func species() -> Dictionary:
 
 func initial_state() -> Dictionary:
 	config = species()[species_id].duplicate(true)
+	for pair in [["respawn","respawn"],["walk_radius","leash_radius"],["aggro_radius","detect_radius"]]:
+		if spawn_overrides.has(pair[0]): config[pair[1]]=spawn_overrides[pair[0]]
 	return {"hp": int(config.hp), "stats": {"max_hp": int(config.hp), "attack": config.attack, "defense": config.defense, "accuracy": config.accuracy, "evasion": config.evasion}}
 
 func _ready() -> void:
@@ -33,9 +36,12 @@ func _ready() -> void:
 	shape.radius = config.radius
 	collision.shape = shape
 	add_child(collision)
-	sprite.texture = load("res://assets/%s.png" % species_id)
-	sprite.hframes = 4
-	var height := float(sprite.texture.get_height())
+	var visual: Dictionary=config.get("visual",{})
+	sprite.texture = load(EterContent.asset_path(str(visual.get("path",species_id))))
+	sprite.hframes = int(visual.get("hframes",4))
+	sprite.vframes = int(visual.get("vframes",1))
+	sprite.scale=Vector2.ONE*float(visual.get("scale",1))
+	var height := float(sprite.texture.get_height())/sprite.vframes
 	sprite.position = Vector2(0, -height / 2 + 6)
 	bar.position.y = -height - 3
 	name_label.position = Vector2(-65, -height - 17)
@@ -46,17 +52,21 @@ func change_phase(value: String) -> void:
 	if phase != value:
 		phase = value
 		phase_changed.emit(value)
+		if value=="detect": play_sound("aggro")
 
 func visible_player() -> bool:
+	if EterContent.prevents_aggro(combat.world.geometry,player.position): return false
 	var query := PhysicsRayQueryParameters2D.create(position, player.position, 1)
 	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 func on_hit() -> void:
+	play_sound("hit")
 	if phase == "idle":
 		change_phase("detect")
 		detect_left = 0.15
 
 func on_defeated() -> void:
+	play_sound("death")
 	path.clear()
 	velocity = Vector2.ZERO
 	respawn_left = config.respawn
@@ -95,7 +105,7 @@ func _physics_process(delta: float) -> void:
 			refresh()
 		return
 	var distance := position.distance_to(player.position)
-	if phase in ["detect", "chase", "attack"] and (player.dead or home.distance_to(player.position) > float(config.leash_radius) or home.distance_to(position) > float(config.leash_radius)):
+	if phase in ["detect", "chase", "attack"] and (player.dead or EterContent.prevents_aggro(combat.world.geometry,player.position) or home.distance_to(player.position) > float(config.leash_radius) or home.distance_to(position) > float(config.leash_radius)):
 		change_phase("return")
 		repath_left = 0
 	match phase:
@@ -120,7 +130,10 @@ func _physics_process(delta: float) -> void:
 				repath_left = 0
 			elif attack_left <= 0 and is_instance_valid(combat):
 				attack_left = config.attack_interval
-				combat.receive_damage(state.stats)
+				play_sound("attack")
+				var attack: Dictionary=state.stats.duplicate()
+				if config.has("damage_min"): attack.attack=combat.random.randi_range(int(config.damage_min),int(config.damage_max))
+				combat.receive_damage(attack)
 		"return":
 			if position.distance_to(home) < 2:
 				position = home
@@ -137,3 +150,14 @@ func _physics_process(delta: float) -> void:
 		sprite.flip_h = velocity.x < 0
 	else:
 		sprite.frame = 0
+	var frames := animation_frames()
+	if not frames.is_empty():
+		animation_time+=delta if velocity.length_squared()<=0.1 else 0
+		sprite.frame=clampi(int(frames[int(animation_time*7)%frames.size()]),0,sprite.hframes*sprite.vframes-1)
+
+func play_sound(event: String) -> void:
+	EterAudio.get_manager(get_tree()).play(str(config.get("audio",{}).get(event+"_sound","")),"Combat")
+
+func animation_frames() -> Array:
+	var key := "death" if phase=="dying" else "attack" if phase=="attack" else "walk" if velocity.length_squared()>0.1 else "idle"
+	return config.get("visual",{}).get("animation_mapping",{}).get(key,[])

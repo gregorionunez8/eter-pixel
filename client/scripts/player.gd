@@ -6,6 +6,7 @@ var navigation: EterNavigation
 var path := PackedVector2Array()
 var destination := Vector2.ZERO
 var sprite := Sprite2D.new()
+var equipment_layers: Array[Sprite2D] = []
 var animation_time := 0.0
 var facing := 2
 var frame := 0
@@ -54,6 +55,18 @@ func update_equipment_visual() -> void:
 	var equipped: bool = weapon_equipped if remote else App.character.inventory.equipment.has("weapon")
 	var suffix := "" if equipped else "_unarmed"
 	sprite.texture = load("res://assets/%s%s.png" % [definition.sprite,suffix])
+	for layer in equipment_layers: layer.queue_free()
+	equipment_layers.clear()
+	if remote: return
+	for uid in App.character.inventory.equipment.values():
+		var item := EterInventory.find(App.character.inventory,uid)
+		var visual: Dictionary=EterInventory.definitions().definitions[item.definition].get("equipped_visual",{})
+		if str(visual.get("path","")).is_empty(): continue
+		var layer := Sprite2D.new(); layer.texture=load(EterContent.asset_path(visual.path))
+		layer.hframes=int(visual.get("hframes",1)); layer.vframes=int(visual.get("vframes",1))
+		var offset: Array=visual.get("offset",[0,-18]); layer.position=Vector2(offset[0],offset[1])
+		var dimensions: Array=visual.get("scale",[1,1]); layer.scale=Vector2(dimensions[0],dimensions[1])
+		layer.z_index=int(visual.get("layer",1)); add_child(layer); equipment_layers.append(layer)
 
 func move_to(point: Vector2) -> void:
 	if App.online and not remote:
@@ -107,3 +120,5 @@ func animate(delta: float) -> void:
 		frame = 0
 		animation_time = 0
 	sprite.frame = facing * 4 + frame
+	for layer in equipment_layers:
+		layer.frame=(facing*4+frame)%(layer.hframes*layer.vframes)

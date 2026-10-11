@@ -3,7 +3,10 @@ extends RefCounted
 
 const ATLAS := preload("res://assets/items.png")
 
-static func texture(item: Dictionary) -> AtlasTexture:
+static func texture(item: Dictionary,ground: bool=false) -> Texture2D:
+	var definition: Dictionary=EterInventory.definitions().definitions[item.definition]
+	var custom := str(definition.get("ground_sprite","")) if ground else str(definition.get("icon_path",""))
+	if not custom.is_empty(): return load(EterContent.asset_path(custom))
 	var result := AtlasTexture.new()
 	result.atlas = ATLAS
 	result.region = Rect2(int(EterInventory.definitions().definitions[item.definition].icon)*16,0,16,16)

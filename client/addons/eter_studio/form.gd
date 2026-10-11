@@ -61,12 +61,18 @@ func commit(container: Variant,key: Variant,value: Variant,full_path: String) ->
 		for option in target.get("options",{}).keys():
 			if not option in allowed: target.options.erase(option)
 		call_deferred("rebuild")
+	if container is Dictionary and container == target and key=="behavior" and section=="Skills":
+		target.mode={"direct_damage":"single","projectile":"single","area_damage":"area","heal":"heal","multi_projectile":"multiple","aoe_around_player":"area","buff":"buff","debuff":"debuff","directional":"directional"}.get(value,"single")
+		if value=="projectile": target.effect="fire"
+		elif value=="multi_projectile": target.effect="arrow"
+		call_deferred("rebuild")
 	registry.touch(); edited.emit()
 
 func choices(key: String,full_path: String) -> Array:
 	if key == "category" and section == "Assets": return ["Ground","Walls","Nature","Buildings","Interior","Decoration","Special","Custom"]
 	if key == "category" and section == "Audio": return ["UI","Player","Movement","Combat","Skills","Monster","NPC","Town","PvP","Ambient","Music","Items","Portals"]
 	if key == "category" and section != "Items": return []
+	if key=="option": return registry.data.item_options.definitions.keys()
 	var references := {"item":"Items","definition":"Items","book_item_id":"Items","learn_skill":"Skills","skill":"Skills","species":"Monsters","npc_id":"NPCs","shop_id":"Shops","target":"Maps","map_id":"Maps","scaling_stat":"Stats"}
 	if key.ends_with("_sound") or key in ["music","ambient_sound","ambient_loop"]: return [""]+registry.records("Audio").keys()
 	if key in references:

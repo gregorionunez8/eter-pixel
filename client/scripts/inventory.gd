@@ -86,7 +86,7 @@ static func equip(character: Dictionary, uid: String) -> bool:
 	if item.is_empty() or state.equipment.values().has(uid):
 		return false
 	var definition: Dictionary = definitions().definitions[item.definition]
-	if not definition.has("slot") or not character.class_id in definition.get("classes",["warrior","mage","elf"]):
+	if int(character.level)<int(definition.get("required_level",1)) or not definition.has("slot") or not character.class_id in definition.get("classes",["warrior","mage","elf"]):
 		return false
 	var draft := state.duplicate(true)
 	var moving := find(draft,uid)
@@ -139,6 +139,12 @@ static func bonuses(state: Dictionary) -> Dictionary:
 		for stat in definition.bonuses:
 			var amount := floori(float(definition.bonuses[stat]) * float(definitions().rarities[item.rarity].multiplier)) + int(item.upgrade) * int(definitions().upgrade.stat_per_level)
 			result[stat] = int(result.get(stat,0)) + amount
+		var configured: Dictionary=definition.get("options",{}).duplicate(); configured.merge(item.get("options",{}),true)
+		for option in configured:
+			var option_rules: Dictionary=Catalog.read("item_options").definitions.get(option,{})
+			if option_rules.get("unit","") == "skill_id": continue
+			var stat := str(option_rules.get("stat",option))
+			result[stat]=float(result.get(stat,0))+float(configured[option])
 	return result
 
 static func upgrade(character: Dictionary, uid: String, roll: float) -> Dictionary:
@@ -167,6 +173,14 @@ static func valid_item(item: Dictionary) -> bool:
 		if not integer(item[key]):
 			return false
 	var definition: Dictionary = definitions().definitions[item.definition]
+	if not item.get("options",{}) is Dictionary: return false
+	for option in item.get("options",{}):
+		if not option in Catalog.read("item_options").allowed.get(definition.category,[]): return false
+		var rule: Dictionary=Catalog.read("item_options").definitions[option]
+		var value: Variant=item.options[option]
+		if rule.unit=="skill_id":
+			if not EterCombatRules.definitions().skills.has(str(value)): return false
+		elif typeof(value) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(value)) or float(value)<0 or (rule.unit=="percent" and float(value)>100): return false
 	return int(item.count) >= 1 and int(item.count) <= int(definition.stack) and int(item.upgrade) >= 0 and int(item.upgrade) <= int(definitions().upgrade.max) and int(item.durability) >= 0 and int(item.durability) <= int(definition.durability)
 
 static func valid(state: Dictionary, class_id: String) -> bool:
@@ -184,7 +198,7 @@ static func valid(state: Dictionary, class_id: String) -> bool:
 			return false
 		ids[item.uid] = true
 		var definition: Dictionary = definitions().definitions[item.definition]
-		if int(item.count) < 1 or int(item.count) > int(definition.stack) or int(item.upgrade) < 0 or int(item.upgrade) > 15 or int(item.durability) < 0 or int(item.durability) > int(definition.durability):
+		if int(item.count) < 1 or int(item.count) > int(definition.stack) or int(item.upgrade) < 0 or int(item.upgrade) > int(definitions().upgrade.max) or int(item.durability) < 0 or int(item.durability) > int(definition.durability):
 			return false
 		if state.equipment.values().has(item.uid):
 			if int(item.x) != -1 or int(item.y) != -1:
@@ -202,4 +216,20 @@ static func valid(state: Dictionary, class_id: String) -> bool:
 		if definition.get("slot","") != slot or not class_id in definition.get("classes",["warrior","mage","elf"]):
 			return false
 		equipped_ids[item.uid] = true
+	return true
+
+static func learn_book(character: Dictionary,uid: String) -> bool:
+	var item := find(character.inventory,uid)
+	if item.is_empty() or character.hp<=0: return false
+	var definition: Dictionary=definitions().definitions[item.definition]
+	var id := str(definition.get("learn_skill",""))
+	var skill: Dictionary=EterCombatRules.definitions().skills.get(id,{})
+	if definition.get("category","")!="skill_book" or skill.is_empty(): return false
+	if not character.class_id in skill.get("classes",[]) or int(character.level)<int(skill.get("required_level",1)): return false
+	if not character.class_id in definition.get("classes",[]) or int(character.level)<int(definition.get("required_level",1)): return false
+	if id in EterCombatRules.definitions().classes[character.class_id].skills or id in character.get("learned_skills",[]): return false
+	if not character.has("learned_skills"): character.learned_skills=[]
+	character.learned_skills.append(id)
+	item.count-=1
+	if item.count==0: remove(character.inventory,uid)
 	return true

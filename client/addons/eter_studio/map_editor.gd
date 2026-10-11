@@ -16,7 +16,7 @@ func open(store: RefCounted,value: Dictionary) -> void:
 	registry=store; map=value
 func _ready() -> void:
 	var toolbar := HBoxContainer.new(); add_child(toolbar)
-	for mode in ["Select / Move","Paint","Erase Paint","Collision","Erase Collision","Spot","NPC","Portal","Player Spawn","Safe Zone","PvP Zone","Audio Zone"]: tools.add_item(mode)
+	for mode in ["Select / Move","Paint","Erase Paint","Collision","Erase Collision","Spot","NPC","Portal","Player Spawn","Default Spawn","Safe Zone","PvP Zone","Audio Zone"]: tools.add_item(mode)
 	toolbar.add_child(tools); toolbar.add_child(choice)
 	tools.item_selected.connect(func(_index): update_choices())
 	choice.item_selected.connect(func(_index): canvas.asset=choice.get_item_text(choice.selected); canvas.content_id=canvas.asset)

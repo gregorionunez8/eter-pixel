@@ -105,14 +105,34 @@ func select_record(id: String) -> void:
 func open_record(id: String) -> void:
 	selected_id = id; clear_body()
 	var heading := Label.new(); heading.text = section+" · "+id+" (ID estable)"; body.add_child(heading)
+	if section in ["Items","Monsters","Skills","NPCs"]: add_previews(id)
+	if section in ["Items","Monsters","Skills","NPCs","Maps"]:
+		var test := Button.new(); test.text="TEST · "+section; body.add_child(test); test.disabled=editor_plugin==null; test.pressed.connect(func(): test_content(section,id))
 	form = Form.new(); body.add_child(form); form.open(registry,section,registry.record(section,id))
-	form.asset_requested.connect(open_asset)
+	form.asset_requested.connect(import_audio if section=="Audio" else open_asset)
+	form.edited.connect(refresh_list)
+	if section == "Skills":
+		var book := Button.new(); book.text="CREATE SKILL BOOK"; body.add_child(book); book.pressed.connect(func(): create_skill_book(id))
 	if section == "Monsters":
 		var label := Label.new(); label.text = "Drops del monstruo · probabilidades en %"; body.add_child(label)
 		var drops_form := Form.new(); body.add_child(drops_form)
 		if not registry.data.economy.drops.has(id): registry.data.economy.drops[id] = []
 		drops_form.open(registry,"Drops",{"drops":registry.data.economy.drops[id]})
 		drops_form.edited.connect(func(): registry.data.economy.drops[id] = drops_form.target.drops)
+		var sort_drops := Button.new(); sort_drops.text="Ordenar drops por chance"; body.add_child(sort_drops)
+		sort_drops.pressed.connect(func(): registry.data.economy.drops[id].sort_custom(func(a,b): return a.chance>b.chance); registry.touch(); open_record(id))
+	if section == "Items": add_upgrade_preview(id)
+	if section == "Balance": add_balance_panels()
+	if section == "Progression": add_experience_table()
+	if section == "Audio":
+		var audio_controls := HBoxContainer.new(); body.add_child(audio_controls)
+		var preview := AudioStreamPlayer.new(); body.add_child(preview)
+		var play := Button.new(); play.text="Play"; audio_controls.add_child(play)
+		play.pressed.connect(func():
+			var audio: Dictionary=registry.record("Audio",id)
+			if str(audio.get("path","")).is_empty(): message("Importar audio primero."); return
+			preview.stream=load(audio.path); preview.volume_db=linear_to_db(maxf(0.0001,float(audio.get("volume",1)))); preview.pitch_scale=float(audio.get("pitch",1)); preview.play())
+		var stop := Button.new(); stop.text="Stop"; audio_controls.add_child(stop); stop.pressed.connect(preview.stop)
 	if section == "Maps":
 		var map_editor := preload("map_editor.gd").new(); map_editor.open(registry,registry.record("Maps",id)); body.add_child(map_editor)
 		map_editor.asset_requested.connect(open_asset)
@@ -220,3 +240,95 @@ func show_test_tools() -> void:
 	run.pressed.connect(func():
 		if not registry.build().is_empty(): show_validation(); return
 		editor_plugin.get_editor_interface().play_main_scene())
+
+func import_audio(_current: String,setter: Callable) -> void:
+	var dialog := FileDialog.new(); dialog.access=FileDialog.ACCESS_FILESYSTEM; dialog.file_mode=FileDialog.FILE_MODE_OPEN_FILE
+	dialog.filters=PackedStringArray(["*.wav, *.ogg ; Audio WAV / OGG"]); add_child(dialog)
+	dialog.file_selected.connect(func(file_path: String):
+		var destination := "res://assets/audio/"+file_path.get_file()
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://assets/audio"))
+		if FileAccess.file_exists(destination):
+			message("Ya existe ese nombre. Renombrar el archivo antes de importar para no sobrescribir audio."); dialog.queue_free(); return
+		var error := DirAccess.copy_absolute(file_path,ProjectSettings.globalize_path(destination))
+		if error!=OK: message("No se pudo importar audio.")
+		else:
+			setter.call(destination)
+			if editor_plugin!=null: editor_plugin.get_editor_interface().get_resource_filesystem().scan()
+		dialog.queue_free())
+	dialog.canceled.connect(dialog.queue_free); dialog.popup_centered(Vector2i(820,560))
+
+func create_skill_book(skill_id: String) -> void:
+	var skill: Dictionary=registry.record("Skills",skill_id)
+	if not str(skill.get("book_item_id","")).is_empty(): message("Este poder ya tiene un libro."); return
+	var id := skill_id+"_book"; var suffix := 1
+	while registry.records("Items").has(id): id=skill_id+"_book_"+str(suffix); suffix+=1
+	var item := Schema.defaults("Items"); item.category="skill_book"; item.erase("slot"); item.name="Libro · "+str(skill.name)
+	item.description="Aprende "+str(skill.name); item.learn_skill=skill_id; item.classes=skill.get("classes",[]).duplicate()
+	if item.classes.is_empty():
+		for class_id in registry.data.combat.classes:
+			if skill_id in registry.data.combat.classes[class_id].skills: item.classes.append(class_id)
+	item.required_level=skill.get("required_level",1); item.durability=0
+	var error: String=registry.create("Items",id,item)
+	if error.is_empty(): skill.book_item_id=id; registry.touch(); section="Items"; refresh_list(); open_record(id)
+	else: message(error)
+
+func add_previews(id: String) -> void:
+	var strip := HBoxContainer.new(); body.add_child(strip)
+	var record: Dictionary=registry.record(section,id)
+	var visuals: Array=[]
+	if section=="Items":
+		visuals=[["Inventory Icon",record.get("icon_path",""),1,1],["Ground Item",record.get("ground_sprite",""),1,1],["Equipped Visual",record.get("equipped_visual",{}).get("path",""),record.get("equipped_visual",{}).get("hframes",1),record.get("equipped_visual",{}).get("vframes",1)]]
+	elif section=="Monsters": visuals=[["Animation",record.get("visual",{}).get("path",id),record.get("visual",{}).get("hframes",4),record.get("visual",{}).get("vframes",1)]]
+	elif section=="Skills": visuals=[["Skill Icon",record.get("icon_path",""),1,1]]
+	else: visuals=[["NPC",record.get("visual","warrior_unarmed"),4,8]]
+	for entry in visuals:
+		var preview := preload("preview.gd").new(); preview.label=entry[0]; preview.columns=maxi(1,int(entry[2])); preview.rows=maxi(1,int(entry[3])); preview.animated=section=="Monsters"
+		var file_path := resolve_asset(str(entry[1]))
+		if not file_path.is_empty() and FileAccess.file_exists(file_path):
+			var image := Image.new()
+			if image.load(ProjectSettings.globalize_path(file_path))==OK: preview.texture=ImageTexture.create_from_image(image)
+		elif section=="Items" and entry[0] in ["Inventory Icon","Ground Item"]:
+			var image := Image.new()
+			if image.load(ProjectSettings.globalize_path("res://assets/items.png"))==OK:
+				var atlas := AtlasTexture.new(); atlas.atlas=ImageTexture.create_from_image(image); atlas.region=Rect2(int(record.get("icon",0))*16,0,16,16); preview.texture=atlas
+		strip.add_child(preview)
+
+func test_content(kind: String,id: String) -> void:
+	var failure: String=registry.build()
+	if not failure.is_empty(): message(failure); return
+	var map_id := id if kind=="Maps" else "village"
+	var request := {"section":kind,"id":id,"map_id":map_id,"class_id":"warrior"}
+	var error: String=registry.atomic_write(registry.root.path_join("artifacts/studio-test.json"),JSON.stringify(request))
+	if not error.is_empty(): message(error); return
+	if editor_plugin!=null: editor_plugin.get_editor_interface().play_custom_scene("res://scenes/studio_test_room.tscn")
+
+func add_balance_panels() -> void:
+	for entry in [["Item Upgrade",registry.data.items.upgrade],["Economy",registry.data.economy],["Progression / Reset",registry.data.progression]]:
+		var label := Label.new(); label.text=entry[0]; body.add_child(label)
+		var balance_form := Form.new(); body.add_child(balance_form)
+		var target: Dictionary=entry[1]
+		balance_form.open(registry,"Balance",target)
+	add_experience_table()
+func add_experience_table() -> void:
+	var settings: Dictionary=registry.data.progression
+	var label := Label.new(); label.text="Curva XP · primeras "+str(mini(200,int(settings.max_level)))+" filas (tabla o fórmula)"; body.add_child(label)
+	var table := Tree.new(); table.columns=3; table.hide_root=true; table.column_titles_visible=true; table.custom_minimum_size.y=230
+	for index in range(3): table.set_column_title(index,["Level","Required XP","Total XP"][index])
+	body.add_child(table); var root := table.create_item(); var total := 0
+	for level in range(1,mini(200,int(settings.max_level))+1):
+		var xp := maxi(1,floori(float(settings.experience_base)*pow(level,float(settings.experience_exponent))))
+		if settings.get("experience_mode","formula")=="table" and settings.get("experience_table",[]).size()>=level: xp=int(settings.experience_table[level-1])
+		var row := table.create_item(root); row.set_text(0,str(level)); row.set_text(1,str(xp)); row.set_text(2,str(total)); total+=xp
+
+func add_upgrade_preview(id: String) -> void:
+	var record: Dictionary=registry.record("Items",id)
+	if not record.has("slot"): return
+	var label := Label.new(); label.text="Upgrade Preview · rarity normal"; body.add_child(label)
+	var table := Tree.new(); table.columns=3; table.column_titles_visible=true; table.hide_root=true; table.custom_minimum_size.y=180
+	for index in range(3): table.set_column_title(index,["+","Attack","Defense"][index])
+	body.add_child(table); var root := table.create_item()
+	for level in range(int(registry.data.items.upgrade.max)+1):
+		var row := table.create_item(root); row.set_text(0,str(level))
+		for index in range(1,3):
+			var stat: String=["","attack","defense"][index]
+			row.set_text(index,str(float(record.get("bonuses",{}).get(stat,0))+level*float(registry.data.items.upgrade.stat_per_level)) if record.get("bonuses",{}).has(stat) else "—")

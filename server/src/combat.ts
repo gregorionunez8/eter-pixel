@@ -1,6 +1,8 @@
+import { preventsAggro } from "./content.js";
 import type { AuthoritativeWorld } from "./world.js";
 import { geometry, mapsCatalog, type Point } from "./navigation.js";
 import {
+  availableSkills,
   combatRules,
   species,
   hit,
@@ -83,7 +85,7 @@ export class CombatSimulation {
           attack_interval: combatRules.training_target.retaliation_interval,
           respawn: combatRules.target_respawn_seconds,
         }
-      : species[name];
+      : {...species[name],...Object.fromEntries([["respawn","respawn"],["walk_radius","leash_radius"],["aggro_radius","detect_radius"]].filter(([key])=>Object.hasOwn(home,key!)).map(([key,target])=>[target,(home as any)[key!]]))};
     this.enemies.set(id, {
       id,
       map_id: mapId,
@@ -212,9 +214,10 @@ export class CombatSimulation {
       battle = this.battles.get(id);
     if (!actor || !battle) throw new Rejected("not_in_world");
     if (actor.state.hp <= 0) throw new Rejected("dead");
-    if (!combatRules.classes[actor.state.class_id].skills.includes(skillId))
+    if (!availableSkills(actor.state).includes(skillId))
       throw new Rejected("invalid_skill");
-    const skill = combatRules.skills[skillId];
+    const skill = {...combatRules.skills[skillId]};
+    skill.mana=Math.max(0,Math.floor(skill.mana*(1-Math.max(0,Math.min(1,Number(actor.state.stats.mana_reduction??0)/100)))));
     if ((battle.cooldowns[skillId] ?? 0) > 0) throw new Rejected("cooldown");
     if (actor.state.mana < skill.mana) throw new Rejected("insufficient_mana");
     let victims: Enemy[] = [];
@@ -234,7 +237,7 @@ export class CombatSimulation {
         (target) =>
           target.hp > 0 &&
           target.map_id === actor.state.map_id &&
-          distance(actor.state.position, target.position) <= skill.range &&
+          distance(actor.state.position, target.position) <= (skill.area_radius??skill.range) &&
           this.visible(
             actor.state.position,
             target.position,
@@ -260,12 +263,14 @@ export class CombatSimulation {
       position: { ...actor.state.position },
     });
     for (const victim of victims)
-      this.damageEnemy(
+      for(let hit=0;hit<(skill.hits??1);hit++)this.damageEnemy(
         id,
         victim,
         skill.multiplier,
         skill.damage_type,
         skill.effect,
+        skill.base_damage??0,
+        skill.scaling_stat??"attack",
       );
   }
   private wear(id: string, slot: string) {
@@ -283,16 +288,19 @@ export class CombatSimulation {
     multiplier: number,
     kind: string,
     effect: string,
+    baseDamage: number=0,
+    scalingStat: string="attack",
   ) {
     if (enemy.hp <= 0) return;
     const actor = this.world.players.get(id)!;
     const result = hit(
-      actor.state.stats,
+      {...actor.state.stats,attack:actor.state.stats[scalingStat]??actor.state.attributes[scalingStat]??actor.state.stats.attack!},
       enemy.config,
       kind,
       multiplier,
       this.random(),
       this.random(),
+      baseDamage,
     );
     enemy.hp = Math.max(0, enemy.hp - result.damage);
     this.event("hit", {
@@ -329,8 +337,10 @@ export class CombatSimulation {
     const actor = this.world.players.get(id),
       battle = this.battles.get(id);
     if (!actor || !battle || actor.state.hp <= 0) return;
+    const attack={...enemy.config};
+    if(attack.damage_min!==undefined)attack.attack=attack.damage_min+Math.floor(this.random()*(attack.damage_max-attack.damage_min+1));
     const result = hit(
-      enemy.config,
+      attack,
       actor.state.stats,
       "physical",
       1,
@@ -452,7 +462,7 @@ export class CombatSimulation {
       ) {
         actor.path = [];
         if (battle.auto <= 0) {
-          battle.auto = config.auto_interval;
+          battle.auto = config.auto_interval/Math.max(0.1,1+Number(actor.state.stats.attack_speed??0)/100);
           this.damageEnemy(
             id,
             target,
@@ -514,6 +524,7 @@ export class CombatSimulation {
         (!target ||
           target.state.hp <= 0 ||
           target.state.map_id !== enemy.map_id ||
+          preventsAggro(this.world.geometryFor(enemy.map_id),target.state.position) ||
           distance(enemy.home, target.state.position) >
             enemy.config.leash_radius ||
           distance(enemy.home, enemy.position) > enemy.config.leash_radius)
@@ -529,6 +540,7 @@ export class CombatSimulation {
               (actor) =>
                 actor.state.hp > 0 &&
                 actor.state.map_id === enemy.map_id &&
+                !preventsAggro(this.world.geometryFor(enemy.map_id),actor.state.position) &&
                 distance(enemy.position, actor.state.position) <=
                   enemy.config.detect_radius &&
                 this.visible(

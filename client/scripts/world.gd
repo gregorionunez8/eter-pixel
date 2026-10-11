@@ -27,6 +27,7 @@ var resource_label := Label.new()
 var message_label := Label.new()
 var message_left := 0.0
 var skill_buttons: Array[Button] = []
+var skill_ids: Array = []
 var experience_label := Label.new()
 var character_panel := PanelContainer.new()
 var character_summary := Label.new()
@@ -48,23 +49,32 @@ var chat_ui: Control
 var health_bar := ProgressBar.new()
 var mana_bar := ProgressBar.new()
 var experience_bar := ProgressBar.new()
+var audio_manager: EterAudio
 var online_world: Node
 var social_ui: Control
 
 func _ready() -> void:
 	economy_random.randomize()
+	audio_manager=EterAudio.get_manager(get_tree())
 	map_id = App.character.get("map_id","village")
 	var maps: Dictionary = Catalog.read("maps").maps
 	if not maps.has(map_id): map_id = "village"
 	geometry = maps[map_id]
 	SIZE = Vector2i(int(geometry.width),int(geometry.height))
-	terrain = load("res://assets/%s.png" % geometry.terrain)
+	terrain = load(EterContent.asset_path(geometry.terrain))
 	entities.y_sort_enabled = true
 	add_child(entities)
 	assert(int(geometry.tile) == TILE,"Map tile dimensions mismatch")
 	spawn_position = Vector2(geometry.spawn.x,geometry.spawn.y)
 	for entry in geometry.obstacles:
 		add_obstacle(Rect2i(int(entry.x),int(entry.y),int(entry.width),int(entry.height)),entry.texture)
+	for layer_name in ["Objects","Decoration Above Player"]:
+		for cell in geometry.get("layers",{}).get(layer_name,[]):
+			var decoration := Sprite2D.new(); decoration.texture=load(EterContent.asset_path(cell.texture))
+			decoration.position=Vector2((float(cell.x)+0.5)*TILE,(float(cell.y)+1)*TILE)
+			decoration.offset.y=-decoration.texture.get_height()/2.0
+			if layer_name=="Decoration Above Player": decoration.z_index=10
+			entities.add_child(decoration)
 	navigation.setup(SIZE, blocked)
 	player = EterPlayer.new()
 	player.navigation = navigation
@@ -91,6 +101,7 @@ func _ready() -> void:
 		var entry: Dictionary = geometry.monsters[monster_index]
 		var monster := EterMonster.new()
 		monster.species_id = entry.species
+		monster.spawn_overrides = entry
 		monster.position = Vector2(entry.x,entry.y)
 		monster.navigation = navigation
 		monster.player = player
@@ -111,7 +122,11 @@ func _ready() -> void:
 	for entry in geometry.npcs:
 		var npc := Node2D.new()
 		npc.set_script(preload("res://scripts/npc.gd"))
-		npc.shop_id = entry.id
+		npc.npc_id = entry.get("npc_id",entry.id)
+		var npc_def: Dictionary=Catalog.read("npcs").definitions.get(npc.npc_id,{})
+		npc.shop_id = npc_def.get("shop_id",entry.id)
+		if npc.shop_id.is_empty(): npc.shop_id=npc.npc_id
+		npc.facing = int(entry.get("facing",npc_def.get("facing",2)))
 		npc.position = Vector2(entry.x,entry.y)
 		entities.add_child(npc)
 		npcs.append(npc)
@@ -151,8 +166,8 @@ func add_obstacle(cells: Rect2i, texture_id: String) -> void:
 	collision.position = Vector2(0, -footprint.size.y / 2)
 	body.add_child(collision)
 	var sprite := Sprite2D.new()
-	sprite.texture = load("res://assets/%s.png" % texture_id)
-	sprite.position = Vector2(0, -sprite.texture.get_height() / 2.0 + 4)
+	sprite.texture = load(EterContent.asset_path(texture_id)) if not texture_id.is_empty() else null
+	sprite.position = Vector2(0, -sprite.texture.get_height() / 2.0 + 4) if sprite.texture != null else Vector2.ZERO
 	body.add_child(sprite)
 	entities.add_child(body)
 	if texture_id == "smith" or texture_id == "shop":
@@ -196,17 +211,7 @@ func build_hud() -> void:
 	message_label.modulate = Color("d5aa64")
 	message_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(message_label)
-	var skills: Array = EterCombatRules.definitions().classes[App.class_id].skills
-	for index in range(skills.size()):
-		var button := Button.new()
-		button.position = Vector2(14 + index * 144, 332)
-		button.size = Vector2(140, 24)
-		button.add_theme_font_size_override("font_size", 10)
-		button.add_theme_color_override("font_disabled_color", Color("b4aca0"))
-		var skill_id: String = skills[index]
-		button.pressed.connect(func(): held = false; combat.cast(skill_id))
-		hud.add_child(button)
-		skill_buttons.append(button)
+	sync_skill_buttons()
 	pause_menu = PanelContainer.new()
 	pause_menu.position = Vector2(220, 112)
 	pause_menu.size = Vector2(200, 150)
@@ -333,6 +338,12 @@ func open_shop(npc: Node2D) -> void:
 	active_npc = npc
 	quest_ui.hide()
 	if is_instance_valid(social_ui): social_ui.hide()
+	if npc.definition.get("type","shop")=="reset": open_reset(npc); return
+	if npc.definition.get("type","shop")=="quest": quest_ui.open(npc.shop_id); return
+	if not EterEconomy.rules().shops.has(npc.shop_id):
+		message_label.text=str(npc.definition.get("dialogue","Sin diálogo.")); message_left=3; return
+	audio_manager.play(str(npc.definition.get("audio",{}).get("interaction_sound","")),"Voice")
+	audio_manager.play(str(npc.definition.get("audio",{}).get("shop_open_sound","")),"UI")
 	shop_ui.shop_id = npc.shop_id
 	shop_ui.refresh()
 	shop_ui.show()
@@ -383,10 +394,10 @@ func transact(operation: String, value: String) -> bool:
 	var accepted := false
 	match operation:
 		"buy": accepted = EterEconomy.buy(App.character,active_npc.shop_id,value)
-		"sell": accepted = EterEconomy.sell(App.character,value)
-		"repair": accepted = active_npc.shop_id == "smith" and EterEconomy.repair(App.character,value)
+		"sell": accepted = EterEconomy.enabled(active_npc.shop_id,"sell") and EterEconomy.sell(App.character,value)
+		"repair": accepted = EterEconomy.enabled(active_npc.shop_id,"repair") and EterEconomy.repair(App.character,value)
 		"upgrade":
-			if active_npc.shop_id == "smith":
+			if EterEconomy.enabled(active_npc.shop_id,"upgrade"):
 				var result := EterInventory.upgrade(App.character,value,economy_random.randf())
 				accepted = result.accepted
 				if accepted:
@@ -593,7 +604,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		held = false
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_1, KEY_2]:
 		var index := 0 if event.keycode == KEY_1 else 1
-		combat.cast(EterCombatRules.definitions().classes[App.class_id].skills[index])
+		var available := EterCombatRules.available(App.character)
+		if index<available.size(): combat.cast(available[index])
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		pointer_position = event.position
 		held = event.pressed
@@ -677,10 +689,12 @@ func _process(delta: float) -> void:
 	if is_instance_valid(pending_pickup) and player.position.distance_to(pending_pickup.position) <= 48:
 		pickup_item(pending_pickup)
 		pending_pickup = null
+	audio_manager.update_world(geometry,player.position,delta,player.velocity.length_squared()>1)
 	message_left -= delta
 	if message_left <= 0:
 		message_label.text = ""
-	var skills: Array = EterCombatRules.definitions().classes[App.class_id].skills
+	var skills: Array = EterCombatRules.available(App.character)
+	if skills != skill_ids: sync_skill_buttons()
 	for index in range(skill_buttons.size()):
 		var skill: Dictionary = EterCombatRules.definitions().skills[skills[index]]
 		var cooldown := float(combat.cooldowns.get(skills[index], 0))
@@ -717,11 +731,37 @@ func _draw() -> void:
 	for y in range(SIZE.y):
 		for x in range(SIZE.x):
 			var tile := 0
-			for region in geometry.regions:
+			for region in geometry.get("regions",[]):
 				if Rect2i(int(region.x),int(region.y),int(region.width),int(region.height)).has_point(Vector2i(x,y)): tile = int(region.tile)
 			draw_texture_rect_region(terrain, Rect2(x * TILE, y * TILE, TILE, TILE), Rect2(tile * TILE, 0, TILE, TILE))
-	for entry in geometry.labels:
+	for layer_name in geometry.get("layers",{}):
+		if layer_name in ["Objects","Decoration Above Player"]: continue
+		for cell in geometry.layers[layer_name]:
+			var image: Texture2D=load(EterContent.asset_path(cell.texture))
+			draw_texture_rect(image,Rect2(float(cell.x)*TILE,float(cell.y)*TILE,TILE,TILE),false)
+	for entry in geometry.get("labels",[]):
 		draw_string(ThemeDB.fallback_font,Vector2(entry.x,entry.y),entry.text,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("d5aa64"))
 	if marker.x >= 0:
 		draw_arc(marker, 8, 0, TAU, 12, Color("64c8cf"), 1)
 		draw_line(marker + Vector2(-12, 0), marker + Vector2(12, 0), Color("64c8cf"))
+
+func sync_skill_buttons() -> void:
+	for button in skill_buttons: button.queue_free()
+	skill_buttons.clear(); skill_ids=EterCombatRules.available(App.character)
+	for index in range(skill_ids.size()):
+		var button := Button.new()
+		button.position=Vector2(14+(index%4)*144,332-(index/4)*26)
+		button.size=Vector2(140,24); button.add_theme_font_size_override("font_size",10)
+		var id: String=skill_ids[index]
+		button.pressed.connect(func(): held=false; combat.cast(id))
+		hud.add_child(button); skill_buttons.append(button)
+
+func open_reset(npc: Node2D) -> void:
+	var dialog := ConfirmationDialog.new(); dialog.dialog_text="Reset requiere nivel "+str(Catalog.read("progression").reset_min_level)+" y "+str(Catalog.read("balance").reset.cost)+" oro. ¿Continuar?"
+	hud.add_child(dialog)
+	dialog.confirmed.connect(func():
+		if App.online: App.send_intent("reset",{"npc_id":npc.npc_id})
+		elif is_instance_valid(npc) and player.position.distance_to(npc.position)<=float(EterEconomy.rules().npc_range) and combat.line_of_sight(npc.position):
+			if EterProgression.reset(App.character): inventory_changed(); sync_skill_buttons(); update_resources()
+		dialog.queue_free())
+	dialog.canceled.connect(dialog.queue_free); dialog.popup_centered()

@@ -23,4 +23,4 @@ func _draw() -> void:
 		draw_line(Vector2(-2,-11),Vector2(-2,-5),Color("f1d59d"),1)
 	else:
 		draw_arc(Vector2.ZERO,10,0,TAU,12,EterItemVisual.color(item),1)
-		draw_texture(EterItemVisual.texture(item),Vector2(-8,-16))
+		draw_texture(EterItemVisual.texture(item,true),Vector2(-8,-16))

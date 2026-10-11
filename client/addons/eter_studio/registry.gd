@@ -28,6 +28,7 @@ func reload() -> void:
 	for name in CATALOGS:
 		var content := FileAccess.get_file_as_string(source_path(name)) if FileAccess.file_exists(source_path(name)) else ""
 		fingerprints[name] = content.sha256_text()
+		for key in preload("json_keys.gd").duplicates(content): errors.append(name+": clave JSON duplicada: "+key)
 		var parser := JSON.new()
 		if not content.is_empty() and (parser.parse(content) != OK or not parser.data is Dictionary):
 			errors.append("%s: JSON inválido (%s)" % [name,parser.get_error_message()])
@@ -117,7 +118,24 @@ func references(section: String,id: String) -> Array[Dictionary]:
 		if section == "Skills" and records("Items")[item_id].get("learn_skill","") == id: result.append({"section":"Items","id":item_id,"path":"learn_skill"})
 	for npc_id in records("NPCs"):
 		if section == "Shops" and records("NPCs")[npc_id].get("shop_id","") == id: result.append({"section":"NPCs","id":npc_id,"path":"shop_id"})
+	if section in ["Assets","Audio"]:
+		var values := [id]
+		if section=="Assets": values.append(str(record(section,id).get("path","")))
+		for kind in SECTIONS:
+			for target_id in records(kind):
+				if kind==section and target_id==id: continue
+				if contains_reference(records(kind)[target_id],values): result.append({"section":kind,"id":target_id,"path":"media reference"})
 	return result
+
+func contains_reference(value: Variant,targets: Array) -> bool:
+	if value is String: return not value.is_empty() and value in targets
+	if value is Dictionary:
+		for child in value.values():
+			if contains_reference(child,targets): return true
+	elif value is Array:
+		for child in value:
+			if contains_reference(child,targets): return true
+	return false
 
 func search(query: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -162,7 +180,10 @@ func save_all() -> String:
 		# One bounded snapshot per catalog, ignored by runtime/Git.
 		for name in written:
 			if not backups[name].is_empty(): atomic_write(backup_root.path_join(name+".json"),backups[name])
-	reload()
+	original=data.duplicate(true)
+	for name in CATALOGS:
+		fingerprints[name]=(FileAccess.get_file_as_string(source_path(name)) if FileAccess.file_exists(source_path(name)) else "").sha256_text()
+	changed.emit()
 	return ""
 
 func build() -> String:

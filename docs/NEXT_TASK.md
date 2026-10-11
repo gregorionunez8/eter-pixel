@@ -24,3 +24,6 @@ Si el usuario pide otra tarea, trabajar desde esta base y reproducir primero el 
 
 ## ÉTER Studio — incremento en curso, 10/10/2026
 Continuar objetivo activo: previews y test tools, item visual/options/libros, consumo runtime de balance/audio, paridad cliente/servidor y regresiones finales. No declarar completado ÉTER Studio con este primer incremento.
+
+## ÉTER Studio — segundo hito verificado
+Continuar MVP: biblioteca/pintura de tiles, multi entries visuales, validación defensiva, previews actualizados y advertencias de campos preparados. Probar online mundo/quests. Campos avanzados de skills/audio/zonas se deben reportar parciales; no considerarlos completos por guardar metadata.

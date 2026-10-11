@@ -59,6 +59,7 @@ func paint(point: Vector2) -> void:
 				if int(entry.width)==1 and int(entry.height)==1 and int(entry.x)==cell.x and int(entry.y)==cell.y: obstacles.remove_at(index)
 	changed.emit(); registry.touch(); queue_redraw()
 func place(point: Vector2) -> void:
+	if tool=="Default Spawn": map.spawn={"x":snappedf(point.x,16),"y":snappedf(point.y,16)}; registry.touch(); changed.emit(); queue_redraw(); return
 	if not ARRAY_TOOLS.has(tool): return
 	var key: String=ARRAY_TOOLS[tool]
 	if not map.has(key): map[key]=[]
@@ -78,7 +79,7 @@ func _gui_input(event: InputEvent) -> void:
 		var point: Vector2=event.position/zoom
 		if event.pressed:
 			if tool in ["Paint","Erase Paint","Collision","Erase Collision"]: paint(point); drag_key="paint"
-			elif ARRAY_TOOLS.has(tool): place(point)
+			elif ARRAY_TOOLS.has(tool) or tool=="Default Spawn": place(point)
 			else:
 				var found := hit(point)
 				if not found.is_empty(): drag_key=found.key; drag_index=found.index; selected.emit(drag_key,drag_index)

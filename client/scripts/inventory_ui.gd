@@ -55,15 +55,15 @@ func _ready() -> void:
 	drop.add_theme_font_size_override("font_size",10)
 	drop.pressed.connect(func(): if not selected_uid.is_empty(): drop_requested.emit(selected_uid))
 	add_child(drop)
-	var names := ["Arma","Armadura","Yelmo","Guantes","Botas","Escudo","Anillo","Colgante"]
-	for index in range(8):
+	var names := ["Arma","Armadura","Yelmo","Guantes","Botas","Escudo","Anillo","Colgante","Pantalón","Alas","Mascota"]
+	for index in range(EterInventory.definitions().slots.size()):
 		var button := Button.new()
 		button.set_script(preload("res://scripts/inventory_slot.gd"))
 		button.character = character
 		button.slot = EterInventory.definitions().slots[index]
 		button.text = names[index]
-		button.position = Vector2(182+(index%2)*68,34+(index/2)*42)
-		button.size = Vector2(64,36)
+		button.position = Vector2(182+(index%2)*68,34+(index/2)*34)
+		button.size = Vector2(64,30)
 		button.add_theme_font_size_override("font_size",9)
 		button.changed.connect(notify_changed)
 		button.pressed.connect(func(): if character.inventory.equipment.has(button.slot): select_item(character.inventory.equipment[button.slot]))
@@ -81,14 +81,15 @@ func activate() -> void:
 		return
 	var definition: Dictionary = EterInventory.definitions().definitions[item.definition]
 	if App.online:
-		if definition.category == "potion": App.send_intent("consume",{"uid":item.uid})
+		if definition.category in ["potion","skill_book"]: App.send_intent("consume",{"uid":item.uid})
 		elif character.inventory.equipment.values().has(item.uid):
 			for slot in character.inventory.equipment:
 				if character.inventory.equipment[slot] == item.uid: App.send_intent("unequip",{"slot":slot})
 		else: App.send_intent("equip",{"uid":item.uid})
 		return
 	var success := false
-	if definition.category == "potion":
+	if definition.category == "skill_book": success=EterInventory.learn_book(character,item.uid)
+	elif definition.category == "potion":
 		if character.hp < character.stats.max_hp:
 			character.hp = mini(character.stats.max_hp,character.hp+floori(character.stats.max_hp*float(definition.heal_fraction)))
 			item.count -= 1

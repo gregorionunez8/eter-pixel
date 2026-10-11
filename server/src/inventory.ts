@@ -1,5 +1,5 @@
-import { items, type Character, type Item } from "./rules.js";
-import { derive } from "./rpg.js";
+import { itemOptions, items, type Character, type Item } from "./rules.js";
+import { derive, combatRules } from "./rpg.js";
 import { Rejected } from "./store.js";
 export type Inventory = Character["inventory"];
 export function find(state: Inventory, uid: string) {
@@ -51,6 +51,13 @@ export function validItem(item: Item) {
   )
     return false;
   const definition = items.definitions[item.definition];
+  if(item.options!==undefined && (!item.options || typeof item.options!=="object" || Array.isArray(item.options)))return false;
+  for(const [option,value] of Object.entries(item.options??{})){
+    const rule=itemOptions.definitions[option];
+    if(!rule || !(itemOptions.allowed[definition.category]??[]).includes(option))return false;
+    if(rule.unit==="skill_id"){if(!Object.hasOwn(combatRules.skills,String(value)))return false;}
+    else if(typeof value!=="number" || !Number.isFinite(value) || value<0 || (rule.unit==="percent" && value>100))return false;
+  }
   return (
     item.count >= 1 &&
     item.count <= definition.stack &&
@@ -140,6 +147,7 @@ export function equip(character: Character, uid: string) {
     item = find(state, uid),
     definition = items.definitions[item.definition];
   if (
+    character.level < (definition.required_level??1) ||
     !definition.slot ||
     !(definition.classes ?? ["warrior", "mage", "elf"]).includes(
       character.class_id,
@@ -186,6 +194,13 @@ export function remove(state: Inventory, uid: string) {
 export function consume(character: Character, uid: string) {
   const item = find(character.inventory, uid),
     definition = items.definitions[item.definition];
+  if(definition.category==="skill_book"){
+    const id=definition.learn_skill, skill=combatRules.skills[id];
+    if(!skill || character.hp<=0 || !(skill.classes??[]).includes(character.class_id) || !(definition.classes??[]).includes(character.class_id) || character.level<(skill.required_level??1) || character.level<(definition.required_level??1) || combatRules.classes[character.class_id].skills.includes(id) || (character.learned_skills??[]).includes(id)) throw new Rejected("cannot_learn");
+    (character.learned_skills??=[]).push(id);
+    if(--item.count===0)remove(character.inventory,uid);
+    return;
+  }
   if (
     definition.category !== "potion" ||
     character.hp <= 0 ||

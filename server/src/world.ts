@@ -1,9 +1,12 @@
+import { resetCharacter } from "./rpg.js";
+import { npcDefinitions } from "./content.js";
 import type { Character } from "./rules.js";
 import { Navigation, geometry, mapsCatalog, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
 import { CombatSimulation } from "./combat.js";
 import { WorldEconomy } from "./economy.js";
 import { Social } from "./social.js";
+import { npcShop } from "./content.js";
 import { acceptQuest, claimQuest, questCatalog } from "./quests.js";
 import { economyRules } from "./economy.js";
 type Actor = {
@@ -38,7 +41,7 @@ export class AuthoritativeWorld {
       throw new Rejected("quest_missing");
     const quest = questCatalog.definitions[questId];
     const npc = this.geometryFor(actor.state.map_id).npcs.find(
-      (n: any) => n.id === quest.npc,
+      (n: any) => npcShop(n) === quest.npc,
     );
     if (
       actor.state.map_id !== quest.map_id ||
@@ -87,6 +90,13 @@ export class AuthoritativeWorld {
     actor.destination = undefined;
     this.combat.cancel(id);
     return actor;
+  }
+  reset(id: string,npcId: string){
+    const actor=this.players.get(id);
+    if(!actor)throw new Rejected("not_in_world");
+    const npc=this.geometryFor(actor.state.map_id).npcs.find((n:any)=>(n.npc_id??n.id)===npcId);
+    if(!npc || npcDefinitions[npcId]?.type!=="reset" || Math.hypot(actor.state.position.x-npc.x,actor.state.position.y-npc.y)>economyRules.npc_range || !this.combat.visible(actor.state.position,npc,actor.state.map_id))throw new Rejected("npc_out_of_range");
+    resetCharacter(actor.state);return {accepted:true};
   }
   constructor(
     random: () => number = Math.random,

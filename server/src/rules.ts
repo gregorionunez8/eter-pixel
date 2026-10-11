@@ -1,14 +1,16 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { balance, applyBalance } from "./content.js";
 import { randomBytes } from "node:crypto";
 
 // npm scripts run in server/. Catalogs are the same source used by Godot.
 export const classes = JSON.parse(
   readFileSync(resolve("../shared/classes.json"), "utf8"),
 );
-export const items = JSON.parse(
+export const items = applyBalance("items",JSON.parse(
   readFileSync(resolve("../shared/items.json"), "utf8"),
-);
+));
+export const itemOptions = JSON.parse(readFileSync(resolve("../shared/item_options.json"),"utf8"));
 export type Character = ReturnType<typeof createCharacter>;
 export function validName(name: unknown): name is string {
   return (
@@ -37,6 +39,7 @@ export function makeItem(definition: string, count = 1, rarity = "normal") {
     durability: items.definitions[definition].durability as number,
     x: -1,
     y: -1,
+    ...({} as {options?: Record<string, number|string>}),
   };
 }
 export function createCharacter(name: string, classId: string) {
@@ -64,16 +67,16 @@ export function createCharacter(name: string, classId: string) {
   };
   const stats = deriveStats({
     class_id: classId,
-    level: 1,
+    level: balance.player?.starting_level??1,
     attributes,
     inventory,
   });
   return {
     name,
     class_id: classId,
-    level: 1,
+    level: balance.player?.starting_level??1,
     experience: 0,
-    attribute_points: 0,
+    attribute_points: balance.player?.starting_stat_points??0,
     attributes,
     appearance: {
       weapon: definition.weapon_visual,
@@ -86,6 +89,7 @@ export function createCharacter(name: string, classId: string) {
     gold: 0,
     starter_ground_claimed: false,
     reset_count: 0,
+    learned_skills: [] as string[],
     quests: {} as
       Record<string, { kills: number; claimed: boolean }> | undefined,
     combat_state: {
@@ -134,6 +138,11 @@ export function deriveStats(state: {
         Number(stats[stat] ?? 0) +
         Math.floor(Number(bonus) * items.rarities[item.rarity].multiplier) +
         item.upgrade * items.upgrade.stat_per_level;
+    for(const [option,value] of Object.entries({...items.definitions[item.definition].options,...item.options})){
+      const rule=itemOptions.definitions[option];
+      if(!rule||rule.unit==="skill_id")continue;
+      stats[rule.stat]=Number(stats[rule.stat]??0)+Number(value);
+    }
   }
   return stats;
 }

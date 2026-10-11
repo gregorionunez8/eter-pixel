@@ -18,6 +18,6 @@ func _get_plugin_icon() -> Texture2D: return get_editor_interface().get_base_con
 func _make_visible(visible: bool) -> void:
 	if is_instance_valid(studio): studio.visible = visible
 func _get_unsaved_status(_for_scene: String) -> String:
-	return "ÉTER Studio tiene contenido sin guardar." if is_instance_valid(studio) and studio.registry.dirty() else ""
+	return "ÉTER Studio tiene contenido sin guardar." if is_instance_valid(studio) and (studio.registry.dirty() or (studio.asset_editor!=null and studio.asset_editor.dirty)) else ""
 func _save_external_data() -> void:
 	if is_instance_valid(studio) and studio.registry.dirty(): studio.save_all()

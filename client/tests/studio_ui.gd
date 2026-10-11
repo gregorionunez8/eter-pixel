@@ -1,5 +1,7 @@
 extends "res://tests/input_runtime.gd"
 func _ready() -> void:
+	get_window().content_scale_size=Vector2i(1280,720)
+	get_window().size=Vector2i(1280,720)
 	var studio := preload("res://addons/eter_studio/studio.gd").new()
 	studio.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(studio)

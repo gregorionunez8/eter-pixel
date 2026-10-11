@@ -1,0 +1,138 @@
+{
+  "definitions": {
+    "skill": {
+      "name": "Skill",
+      "stat": "skill",
+      "unit": "skill_id"
+    },
+    "luck": {
+      "name": "Luck",
+      "stat": "luck",
+      "unit": "points",
+      "future": true
+    },
+    "speed": {
+      "name": "Speed",
+      "stat": "speed",
+      "unit": "flat"
+    },
+    "attack_speed": {
+      "name": "Attack Speed",
+      "stat": "attack_speed",
+      "unit": "percent"
+    },
+    "additional_damage": {
+      "name": "Additional Damage",
+      "stat": "attack",
+      "unit": "flat"
+    },
+    "additional_defense": {
+      "name": "Additional Defense",
+      "stat": "defense",
+      "unit": "flat"
+    },
+    "hp_bonus": {
+      "name": "HP Bonus",
+      "stat": "max_hp",
+      "unit": "flat"
+    },
+    "mp_bonus": {
+      "name": "MP Bonus",
+      "stat": "max_mana",
+      "unit": "flat"
+    },
+    "damage_reduction": {
+      "name": "Damage Reduction",
+      "stat": "damage_reduction",
+      "unit": "percent"
+    },
+    "critical_chance": {
+      "name": "Critical Chance",
+      "stat": "critical_chance",
+      "unit": "percent"
+    },
+    "excellent_chance": {
+      "name": "Excellent Chance",
+      "stat": "excellent_chance",
+      "unit": "percent",
+      "future": true
+    },
+    "mana_reduction": {
+      "name": "Mana Reduction",
+      "stat": "mana_reduction",
+      "unit": "percent"
+    }
+  },
+  "allowed": {
+    "weapon": [
+      "skill",
+      "luck",
+      "attack_speed",
+      "additional_damage",
+      "critical_chance",
+      "excellent_chance"
+    ],
+    "helmet": [
+      "luck",
+      "additional_defense",
+      "hp_bonus",
+      "damage_reduction"
+    ],
+    "armor": [
+      "luck",
+      "additional_defense",
+      "hp_bonus",
+      "damage_reduction"
+    ],
+    "gloves": [
+      "luck",
+      "additional_defense",
+      "attack_speed"
+    ],
+    "pants": [
+      "luck",
+      "additional_defense",
+      "hp_bonus"
+    ],
+    "boots": [
+      "luck",
+      "additional_defense",
+      "speed"
+    ],
+    "ring": [
+      "hp_bonus",
+      "mp_bonus",
+      "damage_reduction",
+      "critical_chance"
+    ],
+    "pendant": [
+      "additional_damage",
+      "critical_chance",
+      "mana_reduction"
+    ],
+    "wings": [
+      "speed",
+      "additional_damage",
+      "damage_reduction",
+      "hp_bonus"
+    ],
+    "pet": [
+      "speed",
+      "additional_damage",
+      "additional_defense",
+      "hp_bonus"
+    ],
+    "shield": [
+      "luck",
+      "additional_defense",
+      "hp_bonus",
+      "damage_reduction"
+    ],
+    "potion": [],
+    "consumable": [],
+    "skill_book": [],
+    "quest_item": [],
+    "material": [],
+    "misc": []
+  }
+}

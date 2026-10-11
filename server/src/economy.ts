@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { npcShop, applyBalance, balance } from "./content.js";
 import { randomBytes } from "node:crypto";
 import type { AuthoritativeWorld } from "./world.js";
 import { geometry, type Point } from "./navigation.js";
@@ -17,9 +18,9 @@ import {
 } from "./inventory.js";
 import { Rejected } from "./store.js";
 import { recordQuestKill } from "./quests.js";
-export const economyRules = JSON.parse(
+export const economyRules = applyBalance("economy",JSON.parse(
   readFileSync(resolve("../shared/economy.json"), "utf8"),
-);
+));
 export type Ground = {
   id: string;
   map_id?: string;
@@ -52,9 +53,13 @@ export class WorldEconomy {
       }
       let offset = 16;
       for (const drop of economyRules.drops[enemy.species] ?? [])
-        if (this.random() < drop.chance) {
+        if (this.random() < Math.min(1,drop.chance*(balance.monster?.drop_rate??1))) {
+          const quantity=(drop.min_quantity??1)+Math.floor(this.random()*((drop.max_quantity??1)-(drop.min_quantity??1)+1));
+          const item=makeItem(drop.item,quantity,drop.rarity??"normal");
+          item.upgrade=(drop.min_upgrade??0)+Math.floor(this.random()*((drop.max_upgrade??0)-(drop.min_upgrade??0)+1));
+          for(const option of drop.possible_options??[])if(typeof option==="object" && this.random()<(drop.option_chance??0))(item.options??={})[option.option]=option.value;
           this.spawn({
-            item: makeItem(drop.item, 1, drop.rarity ?? "normal"),
+            item,
             position: { x: enemy.position.x + offset, y: enemy.position.y },
             owner: killer,
           });
@@ -72,7 +77,7 @@ export class WorldEconomy {
     const actor = this.actor(id),
       npc = this.world
         .geometryFor(actor.state.map_id)
-        .npcs.find((npc: any) => npc.id === shop);
+        .npcs.find((npc: any) => npcShop(npc) === shop);
     if (
       !npc ||
       !Object.hasOwn(economyRules.shops, shop) ||
@@ -197,18 +202,26 @@ export class WorldEconomy {
     const actor = this.npc(id, shop);
     if (!economyRules.shops[shop].stock.includes(definition))
       throw new Rejected("not_in_stock");
-    const price = economyRules.prices[definition];
+    if(economyRules.shops[shop].buy_enabled===false)throw new Rejected("buy_disabled");
+    const price = this.buyPrice(definition,shop);
     if (actor.state.gold < price) throw new Rejected("insufficient_gold");
     add(actor.state.inventory, makeItem(definition));
     actor.state.gold -= price;
   }
+  buyPrice(id: string,shop: string=""){
+    const definition=items.definitions[id];
+    const override=economyRules.shops[shop]?.prices?.[id]??definition.buy_price;
+    return override!==undefined?Math.max(0,Math.floor(override*(balance.economy?.buy_multiplier??1))):economyRules.prices[id]??0;
+  }
   salePrice(item: Item) {
+    const definition=items.definitions[item.definition];
+    if(definition.sell_price!==undefined)return Math.max(0,Math.floor(definition.sell_price*item.count));
     const maximum = items.definitions[item.definition].durability,
       condition = maximum ? item.durability / maximum : 1;
     return Math.max(
       1,
       Math.floor(
-        economyRules.prices[item.definition] *
+        this.buyPrice(item.definition) *
           economyRules.sell_fraction *
           item.count *
           condition,
@@ -220,11 +233,21 @@ export class WorldEconomy {
       item = find(actor.state.inventory, uid);
     if (Object.values(actor.state.inventory.equipment).includes(uid))
       throw new Rejected("equipped_item");
+    if(economyRules.shops[shop].sell_enabled===false || this.salePrice(item)<=0)throw new Rejected("sell_disabled");
     this.credit(id, this.salePrice(item));
     remove(actor.state.inventory, uid);
   }
+  serviceShop(id: string,action: string){
+    const actor=this.actor(id);
+    const npc=this.world.geometryFor(actor.state.map_id).npcs.find((n:any)=>{
+      const shop=npcShop(n);
+      return (economyRules.shops[shop]?.[action+"_enabled"]??(shop==="smith")) && Math.hypot(actor.state.position.x-n.x,actor.state.position.y-n.y)<=economyRules.npc_range && this.world.combat.visible(actor.state.position,n,actor.state.map_id);
+    });
+    if(!npc)throw new Rejected("npc_out_of_range");
+    return this.npc(id,npcShop(npc));
+  }
   repair(id: string, uid: string) {
-    const actor = this.npc(id, "smith"),
+    const actor = this.serviceShop(id, "repair"),
       item = find(actor.state.inventory, uid),
       maximum = items.definitions[item.definition].durability,
       cost = (maximum - item.durability) * economyRules.repair_per_point;
@@ -235,7 +258,7 @@ export class WorldEconomy {
     refresh(actor.state);
   }
   upgrade(id: string, uid: string) {
-    const actor = this.npc(id, "smith"),
+    const actor = this.serviceShop(id, "upgrade"),
       item = find(actor.state.inventory, uid);
     if (
       !items.definitions[item.definition].slot ||

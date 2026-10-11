@@ -18,6 +18,8 @@ static func create(value: String, class_id: String) -> Dictionary:
 		return {}
 	var definition: Dictionary = rules.classes[class_id]
 	var result := {"name": value, "class_id": class_id, "level": 1, "experience": 0, "attribute_points": 0, "attributes": definition.attributes.duplicate(true), "appearance": {"weapon": definition.weapon_visual, "armor": definition.armor_visual}}
+	var balance: Dictionary=Catalog.read("balance").get("player",{})
+	result.level=int(balance.get("starting_level",1)); result.attribute_points=int(balance.get("starting_stat_points",0))
 	result["inventory"] = EterInventory.initial(class_id)
 	result["gold"] = 0
 	result["starter_ground_claimed"] = false
@@ -47,5 +49,5 @@ static func derive(character: Dictionary) -> Dictionary:
 	if character.has("inventory"):
 		var bonuses := EterInventory.bonuses(character.inventory)
 		for stat in bonuses:
-			stats[stat] = int(stats.get(stat,0)) + int(bonuses[stat])
+			stats[stat] = float(stats.get(stat,0)) + float(bonuses[stat])
 	return stats

@@ -9,11 +9,13 @@ func add(severity: String,section: String,id: String,message: String) -> void:
 func number(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT,TYPE_FLOAT] and is_finite(float(value))
 
-func path_exists(asset: String) -> bool:
+func path_exists(asset: String,visited: Dictionary={}) -> bool:
+	if visited.has(asset): return false
+	visited=visited.duplicate(); visited[asset]=true
 	if asset.is_empty(): return true
 	if asset.begins_with("res://assets/"): return FileAccess.file_exists(registry.root.path_join("client/"+asset.trim_prefix("res://")))
-	if registry.records("Assets").has(asset): return path_exists(registry.records("Assets")[asset].get("path",""))
-	if registry.records("Audio").has(asset): return path_exists(registry.records("Audio")[asset].get("path",""))
+	if registry.records("Assets").has(asset): return path_exists(registry.records("Assets")[asset].get("path",""),visited)
+	if registry.records("Audio").has(asset): return path_exists(registry.records("Audio")[asset].get("path",""),visited)
 	return false
 
 func scan(value: Variant,section: String,id: String,key: String = "",percent_options: bool = false) -> void:
@@ -36,6 +38,7 @@ func bounded(map: Dictionary,point: Dictionary) -> bool:
 func run(source: RefCounted) -> Array[Dictionary]:
 	registry = source; issues.clear()
 	for error in source.errors: add("ERROR","Validate","",error)
+	if not source.errors.is_empty(): return issues
 	for section in source.SECTIONS:
 		for id in source.records(section):
 			if not source.valid_id(id): add("ERROR",section,id,"ID interno inválido.")
@@ -49,7 +52,7 @@ func run(source: RefCounted) -> Array[Dictionary]:
 		var item: Dictionary = items[id]
 		if not item.has_all(["name","category","size","bonuses","icon","stack","durability"]): add("ERROR","Items",id,"Faltan campos del formato de inventario."); continue
 		if item.size.size() != 2 or int(item.size[0]) < 1 or int(item.size[1]) < 1 or int(item.size[0]) > int(source.data.items.grid_width) or int(item.size[1]) > int(source.data.items.grid_height): add("ERROR","Items",id,"Tamaño incompatible con inventario.")
-		if item.has("slot") and not item.slot in source.data.items.slots: add("ERROR","Items",id,"Slot no registrado: "+str(item.slot))
+		if item.has("slot") and not item.slot in preload("schema.gd").SLOTS.values(): add("ERROR","Items",id,"Slot no registrado: "+str(item.slot))
 		if not item.get("learn_skill","").is_empty() and not source.records("Skills").has(item.learn_skill): add("ERROR","Items",id,"Skill Book referencia un poder inexistente.")
 		if item.get("category","") == "skill_book" and item.has("slot"): add("ERROR","Items",id,"Un Skill Book no puede equiparse.")
 		var allowed: Array = source.data.get("item_options",{}).get("allowed",{}).get(item.category,[])
@@ -71,6 +74,12 @@ func run(source: RefCounted) -> Array[Dictionary]:
 		for drop in source.data.economy.drops[species]:
 			if not items.has(drop.get("item","")): add("ERROR","Monsters",species,"Drop referencia un item inexistente.")
 			scan(drop,"Monsters",species)
+			if items.has(drop.get("item","")):
+				var definition: Dictionary=items[drop.item]
+				if int(drop.get("max_quantity",1))>int(definition.stack): add("ERROR","Monsters",species,"Drop supera el máximo de pila del item.")
+				for option in drop.get("possible_options",[]):
+					if not option is Dictionary or not option.has_all(["option","value"]): add("ERROR","Monsters",species,"Opción de drop requiere opción y valor."); continue
+					if not option.option in source.data.item_options.allowed.get(definition.category,[]): add("ERROR","Monsters",species,"Opción de drop no permitida para ese item.")
 			if int(drop.get("min_quantity",1)) > int(drop.get("max_quantity",1)): add("ERROR","Monsters",species,"Cantidad mínima mayor que máxima.")
 			if int(drop.get("min_upgrade",0)) > int(drop.get("max_upgrade",0)) or int(drop.get("max_upgrade",0)) > int(upgrade.get("max",15)): add("ERROR","Monsters",species,"Rango de upgrade de drop inválido.")
 	var maps: Dictionary = source.records("Maps")
@@ -80,7 +89,7 @@ func run(source: RefCounted) -> Array[Dictionary]:
 		if not map.has_all(["width","height","tile","spawn","terrain","monsters","npcs","portals","obstacles"]): add("ERROR","Maps",map_id,"Faltan datos obligatorios del mapa."); continue
 		if int(map.tile) != 32: add("ERROR","Maps",map_id,"La escala actual requiere tiles de32px.")
 		if not bounded(map,map.spawn): add("ERROR","Maps",map_id,"Player Spawn fuera del mapa.")
-		if not path_exists("res://assets/"+map.terrain+".png"): add("ERROR","Maps",map_id,"Base tile inexistente.")
+		if not path_exists(str(map.terrain)) and not path_exists("res://assets/"+map.terrain+".png"): add("ERROR","Maps",map_id,"Base tile inexistente.")
 		for group in ["monsters","npcs","portals","zones","player_spawns","audio_zones"]:
 			var ids: Dictionary = {}
 			for index in range(map.get(group,[]).size()):
@@ -88,6 +97,7 @@ func run(source: RefCounted) -> Array[Dictionary]:
 				var id := str(entry.get("id",map_id+"-"+group+"-"+str(index)))
 				if ids.has(id): add("ERROR","Maps",map_id,"ID de instancia duplicado: "+id)
 				ids[id] = true
+				if group=="monsters" and (not preload("res://scripts/inventory.gd").integer(entry.get("quantity",1)) or int(entry.get("quantity",1))>64): add("ERROR","Maps",map_id,"Spot requiere cantidad entera entre 1 y64.")
 				if not bounded(map,entry): add("ERROR","Maps",map_id,group+" fuera del mapa: "+id)
 				if group == "monsters":
 					for spawn in entry.get("entries",[{"species":entry.get("species","")}]):
@@ -107,12 +117,14 @@ func run(source: RefCounted) -> Array[Dictionary]:
 	for id in source.records("Skills"):
 		var skill: Dictionary = source.records("Skills")[id]
 		if not skill.get("book_item_id","").is_empty() and (not items.has(skill.book_item_id) or items[skill.book_item_id].get("learn_skill","") != id): add("ERROR","Skills",id,"Libro de aprendizaje incompatible.")
-		if skill.get("mode","single") in ["buff","debuff","directional"]: add("WARNING","Skills",id,"Este comportamiento debe probarse en Test Skill; no equivale a PvP avanzado.")
+		if skill.get("mode","single") in ["buff","debuff","directional"]: add("ERROR","Skills",id,"Comportamiento aún no disponible en runtime: usar single, area, multiple o heal.")
 	for id in source.records("Quests"):
 		var quest: Dictionary = source.records("Quests")[id]
 		if not source.records("Monsters").has(quest.objective.species): add("ERROR","Quests",id,"Objetivo referencia monstruo inexistente.")
 		if not maps.has(quest.map_id): add("ERROR","Quests",id,"Mapa de quest inexistente.")
 		for reward in quest.reward.items:
 			if not items.has(reward.definition): add("ERROR","Quests",id,"Recompensa referencia item inexistente.")
+	for key in source.data.balance:
+		scan(source.data.balance[key],"Balance","balance")
 	if issues.is_empty(): add("INFO","Validate","","Contenido válido: referencias y formatos compatibles.")
 	return issues

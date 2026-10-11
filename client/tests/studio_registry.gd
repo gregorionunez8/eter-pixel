@@ -26,11 +26,14 @@ func _ready() -> void:
 	registry.data.economy.shops.shop.stock.append("blade_test")
 	if not check(registry.references("Items","blade_test").size() == 1 and registry.dirty(),"reference discovery and dirty state"):
 		await finish(); return
+	var bound: Dictionary=registry.record("Items","blade_test")
 	var save_error := registry.save_all()
 	if not check(save_error.is_empty(),"validated atomic save to shared format: "+save_error):
 		await finish(); return
 	if not check(not registry.dirty() and registry.records("Items").has("blade_test"),"save reload preserves record and resets dirty"):
 		await finish(); return
+	bound.name="Edited after save"
+	if not check(registry.dirty() and registry.record("Items","blade_test").name=="Edited after save" and registry.save_all().is_empty(),"bound editor keeps editing after Save All"): await finish(); return
 	var external := FileAccess.open(folder.path_join("shared/items.json"),FileAccess.READ_WRITE)
 	external.seek_end(); external.store_string(" "); external.close()
 	registry.data.items.definitions.blade_test.name = "Edited"

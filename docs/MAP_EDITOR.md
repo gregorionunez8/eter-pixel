@@ -1,0 +1,10 @@
+# Map Editor
+WORLD > Maps: seleccionar village, forest o crypt. Formulario arriba; lienzo visual debajo (hacer scroll). Se preservan Aldea de Éter, Bosque de las Sombras y Cripta Olvidada.
+Create crea una definición nueva con ID estable, tile32 y tamaño48×32 inicial. Duplicate conserva geometría con otro ID. Name cambia título visible. Delete confirma y muestra portales/quests que referencian el mapa.
+En el lienzo elegir herramienta y contenido. Paint/Erase Paint pintan tiles. Layer elige Ground, Secondary Ground, Decoration Below Player, Objects o Decoration Above Player. Collision marca celdas; Erase Collision quita celdas individuales creadas. Los obstáculos rectangulares existentes se editan también en el formulario.
+Spot/NPC/Portal/Player Spawn colocan instancias con click. Select / Move selecciona y arrastra; el formulario de instancia cambia propiedades. Delete selected instance borra sólo esa colocación.
+Default Spawn cambia el punto inicial con click. Portal selecciona un mapa destino y toma inicialmente su spawn; Arrival puede ajustarse.
+Safe Zone/PvP Zone muestran overlays distintos. Click crea un rectángulo; arrastrar lo mueve y Width/Height lo redimensionan. Monster Aggro Disabled tiene efecto runtime local/servidor. PvP queda como metadata preparada: no hay combate entre jugadores nuevo ni penalidades.
+Audio Zone permite seleccionar music/ambient y prioridad. El runtime selecciona la zona de mayor prioridad y vuelve al audio del mapa al salir.
+Save All > Build Content > TEST Maps abre ese mapa con guardado desactivado. Reiniciar el servidor para publicar cambios online.
+Limitaciones: zonas rectangulares; sin polígonos, editor de triggers ni pintura de formas irregulares de zona. No borrar village: lo necesita la creación actual de personajes.

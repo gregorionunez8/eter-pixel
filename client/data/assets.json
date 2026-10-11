@@ -1,0 +1,154 @@
+{
+  "definitions": {
+    "crypt_pillar": {
+      "name": "crypt_pillar",
+      "path": "res://assets/crypt_pillar.png",
+      "category": "Custom"
+    },
+    "crypt_wall": {
+      "name": "crypt_wall",
+      "path": "res://assets/crypt_wall.png",
+      "category": "Custom"
+    },
+    "elf": {
+      "name": "elf",
+      "path": "res://assets/elf.png",
+      "category": "Custom"
+    },
+    "elf_unarmed": {
+      "name": "elf_unarmed",
+      "path": "res://assets/elf_unarmed.png",
+      "category": "Custom"
+    },
+    "goblin": {
+      "name": "goblin",
+      "path": "res://assets/goblin.png",
+      "category": "Custom"
+    },
+    "guardian": {
+      "name": "guardian",
+      "path": "res://assets/guardian.png",
+      "category": "Custom"
+    },
+    "house": {
+      "name": "house",
+      "path": "res://assets/house.png",
+      "category": "Buildings"
+    },
+    "items": {
+      "name": "items",
+      "path": "res://assets/items.png",
+      "category": "Custom"
+    },
+    "mage": {
+      "name": "mage",
+      "path": "res://assets/mage.png",
+      "category": "Custom"
+    },
+    "mage_unarmed": {
+      "name": "mage_unarmed",
+      "path": "res://assets/mage_unarmed.png",
+      "category": "Custom"
+    },
+    "orc": {
+      "name": "orc",
+      "path": "res://assets/orc.png",
+      "category": "Custom"
+    },
+    "pond": {
+      "name": "pond",
+      "path": "res://assets/pond.png",
+      "category": "Custom"
+    },
+    "portal": {
+      "name": "portal",
+      "path": "res://assets/portal.png",
+      "category": "Custom"
+    },
+    "rock": {
+      "name": "rock",
+      "path": "res://assets/rock.png",
+      "category": "Custom"
+    },
+    "shop": {
+      "name": "shop",
+      "path": "res://assets/shop.png",
+      "category": "Buildings"
+    },
+    "shrine": {
+      "name": "shrine",
+      "path": "res://assets/shrine.png",
+      "category": "Custom"
+    },
+    "skeleton": {
+      "name": "skeleton",
+      "path": "res://assets/skeleton.png",
+      "category": "Custom"
+    },
+    "smith": {
+      "name": "smith",
+      "path": "res://assets/smith.png",
+      "category": "Buildings"
+    },
+    "spider": {
+      "name": "spider",
+      "path": "res://assets/spider.png",
+      "category": "Custom"
+    },
+    "terrain": {
+      "name": "terrain",
+      "path": "res://assets/terrain.png",
+      "category": "Ground"
+    },
+    "terrain_crypt": {
+      "name": "terrain_crypt",
+      "path": "res://assets/terrain_crypt.png",
+      "category": "Custom"
+    },
+    "terrain_forest": {
+      "name": "terrain_forest",
+      "path": "res://assets/terrain_forest.png",
+      "category": "Custom"
+    },
+    "training": {
+      "name": "training",
+      "path": "res://assets/training.png",
+      "category": "Custom"
+    },
+    "traveler": {
+      "name": "traveler",
+      "path": "res://assets/traveler.png",
+      "category": "Custom"
+    },
+    "tree": {
+      "name": "tree",
+      "path": "res://assets/tree.png",
+      "category": "Nature"
+    },
+    "tree_shadow": {
+      "name": "tree_shadow",
+      "path": "res://assets/tree_shadow.png",
+      "category": "Custom"
+    },
+    "wall": {
+      "name": "wall",
+      "path": "res://assets/wall.png",
+      "category": "Custom"
+    },
+    "warrior": {
+      "name": "warrior",
+      "path": "res://assets/warrior.png",
+      "category": "Custom"
+    },
+    "warrior_unarmed": {
+      "name": "warrior_unarmed",
+      "path": "res://assets/warrior_unarmed.png",
+      "category": "Custom"
+    },
+    "wolf": {
+      "name": "wolf",
+      "path": "res://assets/wolf.png",
+      "category": "Custom"
+    }
+  }
+}

@@ -64,10 +64,12 @@ func damage_label(point: Vector2, hit_result: Dictionary) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.7)
 	tween.chain().tween_callback(label.queue_free)
 
-func damage_target(target: EterTrainingTarget, multiplier: float, damage_type: String, effect: String) -> void:
+func damage_target(target: EterTrainingTarget, multiplier: float, damage_type: String, effect: String,base_damage: float=0,scaling_stat: String="attack") -> void:
 	if target.dead:
 		return
-	var hit_result := EterCombatRules.hit(App.character.stats, target.state.stats, damage_type, multiplier, random.randf(), random.randf())
+	var attack: Dictionary=App.character.stats.duplicate()
+	attack.attack=App.character.stats.get(scaling_stat,App.character.attributes.get(scaling_stat,App.character.stats.attack))
+	var hit_result := EterCombatRules.hit(attack, target.state.stats, damage_type, multiplier, random.randf(), random.randf(),base_damage)
 	target.state.hp = maxi(0, target.state.hp - int(hit_result.damage))
 	damage_label(target.position, hit_result)
 	spawn_effect(effect, player.position if effect in ["fire", "arrow"] else target.position, target.position)
@@ -110,9 +112,10 @@ func cast(skill_id: String) -> bool:
 		App.send_intent("cast",{"skill_id":skill_id})
 		return true
 	var rules := EterCombatRules.definitions()
-	if player.dead or not skill_id in rules.classes[App.class_id].skills:
+	if player.dead or not skill_id in EterCombatRules.available(App.character):
 		return false
-	var skill: Dictionary = rules.skills[skill_id]
+	var skill: Dictionary = rules.skills[skill_id].duplicate(true)
+	skill.mana=maxi(0,floori(float(skill.mana)*(1.0-clampf(float(App.character.stats.get("mana_reduction",0))/100.0,0,1))))
 	if float(cooldowns.get(skill_id, 0)) > 0:
 		feedback.emit("Habilidad en enfriamiento")
 		return false
@@ -127,13 +130,14 @@ func cast(skill_id: String) -> bool:
 		victims.append(selected)
 	elif skill.mode in ["area", "multiple"]:
 		for target in targets:
-			if not target.dead and player.position.distance_to(target.position) <= float(skill.range) and line_of_sight(target.position):
+			if not target.dead and player.position.distance_to(target.position) <= float(skill.get("area_radius",skill.range)) and line_of_sight(target.position):
 				victims.append(target)
 		if victims.is_empty():
 			feedback.emit("No hay objetivos en rango")
 			return false
 		if skill.mode == "multiple":
 			victims.resize(mini(victims.size(), int(skill.max_targets)))
+	EterAudio.get_manager(get_tree()).play(str(skill.get("audio",{}).get("cast_sound","")),"Combat")
 	App.character.mana -= int(skill.mana)
 	cooldowns[skill_id] = float(skill.cooldown)
 	if skill.mode == "heal":
@@ -142,7 +146,7 @@ func cast(skill_id: String) -> bool:
 	elif skill.mode == "area":
 		spawn_effect(skill.effect, player.position, player.position, skill.range)
 	for victim in victims:
-		damage_target(victim, skill.multiplier, skill.damage_type, skill.effect)
+		for hit in range(int(skill.get("hits",1))): damage_target(victim, skill.multiplier, skill.damage_type, skill.effect,float(skill.get("base_damage",0)),str(skill.get("scaling_stat","attack")))
 	state_changed.emit()
 	return true
 
@@ -195,7 +199,7 @@ func _physics_process(delta: float) -> void:
 	if player.position.distance_to(selected.position) <= float(definition.auto_range) and line_of_sight(selected.position):
 		player.path.clear()
 		if auto_left <= 0:
-			auto_left = definition.auto_interval
+			auto_left = float(definition.auto_interval)/maxf(0.1,1.0+float(App.character.stats.get("attack_speed",0))/100.0)
 			damage_target(selected, 1, App.character.stats.damage_type, "fire" if App.class_id == "mage" else "arrow" if App.class_id == "elf" else "slash")
 	elif chase_left <= 0:
 		chase_left = 0.3

@@ -68,12 +68,12 @@ func refresh() -> void:
 	owned_ids.clear()
 	for id in EterEconomy.rules().shops[shop_id].stock:
 		stock_ids.append(id)
-		stock.add_item("%s · %s oro" % [EterInventory.definitions().definitions[id].name,EterEconomy.rules().prices[id]])
+		stock.add_item("%s · %s oro" % [EterInventory.definitions().definitions[id].name,EterEconomy.buy_price(id,shop_id)])
 	for item in character.inventory.items:
 		owned_ids.append(item.uid)
 		owned.add_item("%s +%s%s" % [EterInventory.definitions().definitions[item.definition].name,item.upgrade," [E]" if character.inventory.equipment.values().has(item.uid) else ""])
-	get_node("repair").disabled = shop_id != "smith"
-	get_node("upgrade").disabled = shop_id != "smith"
+	get_node("repair").disabled = not EterEconomy.enabled(shop_id,"repair")
+	get_node("upgrade").disabled = not EterEconomy.enabled(shop_id,"upgrade")
 	detail.text = "Comprar agrega una unidad. Vender consume la pila; desequipá antes."
 
 func describe() -> void:

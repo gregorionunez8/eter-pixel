@@ -107,3 +107,6 @@ Regresión `./tools/test.ps1 -Graphics` exit0 con import/smoke, movimiento544/cl
 
 ## ÉTER Studio — incremento en curso, 10/10/2026
 Evidencia real: import de plugin sin parse errors; Studio registry 12 checks, UI 5, assets 8, maps 9. Regresión local existente: movement 544, characters 33, combat 209, monsters 1376, progression 138, inventory 83, economy 407, maps 73, quests 87, reload 5. Backend npm test: 82/82 con PostgreSQL real. Esta regresión local antecede al adapter de spots; repetir tras integración runtime. Fallos detectados y corregidos: filtro vacío, Array.get incorrecto, opciones readonly.
+
+## ÉTER Studio — segundo hito verificado
+tools/test-studio.ps1 -Graphics: registry13, UI5, assets8, maps9, runtime8 PASS (último runtime incluye Reset). tools/test.ps1 -Graphics PASS completo: foundation, movement544, classes33, combat209, monsters1376, progression138, inventory83, economy407, maps73, quests87 headless/90 gráficos, reload5, input9, inventory runtime22, economy runtime17, UI18, save reload. tools/test-server.ps1:88/88 y startup WS/PostgreSQL real PASS. Fallos corregidos: arguments de PowerShell, montaje Audio Manager, callbacks de parse y bindings después de guardar.

@@ -1,0 +1,13 @@
+{
+  "definitions": {},
+  "footsteps": {},
+  "buses": [
+    "Master",
+    "Music",
+    "Ambient",
+    "SFX",
+    "UI",
+    "Combat",
+    "Voice"
+  ]
+}

@@ -17,7 +17,8 @@ static func credit(character: Dictionary, amount: int) -> bool:
 static func buy(character: Dictionary, shop: String, definition: String) -> bool:
 	if not rules().shops.has(shop) or not definition in rules().shops[shop].stock:
 		return false
-	var cost := int(rules().prices[definition])
+	if not rules().shops[shop].get("buy_enabled",true): return false
+	var cost := buy_price(definition,shop)
 	if int(character.gold) < cost:
 		return false
 	var draft: Dictionary = character.inventory.duplicate(true)
@@ -28,11 +29,13 @@ static func buy(character: Dictionary, shop: String, definition: String) -> bool
 	return true
 
 static func sale_price(item: Dictionary) -> int:
-	if item.is_empty() or not rules().prices.has(item.definition):
+	if item.is_empty():
 		return 0
-	var maximum := int(EterInventory.definitions().definitions[item.definition].durability)
+	var definition: Dictionary=EterInventory.definitions().definitions[item.definition]
+	if definition.has("sell_price"): return maxi(0,int(definition.sell_price)*int(item.count))
+	var maximum := int(definition.durability)
 	var condition := float(item.durability)/maximum if maximum > 0 else 1.0
-	return maxi(1,floori(float(rules().prices[item.definition])*float(rules().sell_fraction)*int(item.count)*condition))
+	return maxi(1,floori(float(buy_price(item.definition))*float(rules().sell_fraction)*int(item.count)*condition))
 
 static func sell(character: Dictionary, uid: String) -> bool:
 	var item := EterInventory.find(character.inventory,uid)
@@ -69,6 +72,20 @@ static func loot(species: String, random: RandomNumberGenerator) -> Dictionary:
 	if random.randf() < float(config.loot.chance):
 		result.gold = random.randi_range(int(config.loot.gold_min),int(config.loot.gold_max))
 	for drop in rules().drops.get(species,[]):
-		if random.randf() < float(drop.chance):
-			result.items.append(EterInventory.make_item(drop.item,1,drop.get("rarity","normal")))
+		if random.randf() < minf(1,float(drop.chance)*float(Catalog.read("balance").get("monster",{}).get("drop_rate",1))):
+			var quantity := random.randi_range(int(drop.get("min_quantity",1)),int(drop.get("max_quantity",1)))
+			var item := EterInventory.make_item(drop.item,quantity,drop.get("rarity","normal"))
+			item.upgrade=random.randi_range(int(drop.get("min_upgrade",0)),int(drop.get("max_upgrade",0)))
+			for option in drop.get("possible_options",[]):
+				if option is Dictionary and random.randf()<float(drop.get("option_chance",0)):
+					if not item.has("options"): item.options={}
+					item.options[option.option]=option.value
+			result.items.append(item)
 	return result
+
+static func buy_price(id: String,shop: String="") -> int:
+	var definition: Dictionary=EterInventory.definitions().definitions[id]
+	var price: Variant=rules().shops.get(shop,{}).get("prices",{}).get(id,definition.get("buy_price",rules().prices.get(id,0)))
+	return maxi(0,floori(float(price)*float(Catalog.read("balance").get("economy",{}).get("buy_multiplier",1)))) if definition.has("buy_price") or rules().shops.get(shop,{}).get("prices",{}).has(id) else int(price)
+static func enabled(shop: String,action: String) -> bool:
+	return bool(rules().shops.get(shop,{}).get(action+"_enabled",shop=="smith" if action in ["repair","upgrade"] else true))

@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { adaptMaps } from "./content.js";
 export type Point = { x: number; y: number };
 export const geometry = JSON.parse(
   readFileSync(resolve("../shared/world.json"), "utf8"),
 );
-export const mapsCatalog = JSON.parse(
+export const mapsCatalog = adaptMaps(JSON.parse(
   readFileSync(resolve("../shared/maps.json"), "utf8"),
-);
+));
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 export class Navigation {
   private blocked = new Set<number>();

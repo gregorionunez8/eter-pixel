@@ -73,3 +73,6 @@ Hitos Git estables: 81c59f1 fundaciones; cc31582 movimiento/aldea; 4aaf987 perso
 
 ## ÉTER Studio — incremento en curso, 10/10/2026
 Plugin Main Screen, registry sobre shared, formularios CRUD, búsqueda/referencias, validación, guardado con conflicto externo/backup y Build Content. Editor pixel-art y mapa visual conectados; adapters de spots GS/TS conservan legacy. Objetivo completo todavía en curso.
+
+## ÉTER Studio — segundo hito verificado
+Adapters compartidos GS/TS para spots, capas de mapa, item visuals/options, skills aprendibles, economía configurable, balance y reset. Audio Manager y sala Test Content aislada. No se reemplazó contenido original ni backend. Goal sigue activo: cerrar herramientas/previews/validación y pruebas online.
