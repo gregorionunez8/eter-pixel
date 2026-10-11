@@ -8,7 +8,7 @@ func _ready() -> void:
 	sprite.position = Vector2(0,-16)
 	add_child(sprite)
 	var label := Label.new()
-	label.text = definition.name
+	label.text = str(definition.get("name","Portal → "+str(definition.get("target",""))))
 	label.position = Vector2(-90,-64)
 	label.size.x = 180
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

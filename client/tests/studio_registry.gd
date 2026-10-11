@@ -46,6 +46,25 @@ func _ready() -> void:
 	registry.data.economy.shops.shop.stock.erase("blade_test")
 	if not check(registry.build().is_empty() and FileAccess.file_exists(folder.path_join("client/data/items.json")),"build syncs shared catalogs after resolving references"):
 		await finish(); return
+	if not check(registry.duplicate_record("Monsters","goblin","goblin_copy").is_empty() and registry.record("Monsters","goblin_copy").visual.path=="goblin" and registry.data.economy.drops.goblin_copy==registry.data.economy.drops.goblin,"duplicate legacy monster retains visual and drop data"): await finish(); return
+	registry.delete("Monsters","goblin_copy")
+	if not check(not registry.data.economy.drops.has("goblin_copy"),"delete monster removes its owned drop table"): await finish(); return
+	if not check(registry.duplicate_record("Skills","fireball","fireball_copy").is_empty() and registry.record("Skills","fireball_copy").classes==["mage"],"duplicate legacy skill infers its real class restriction"): await finish(); return
+	registry.delete("Skills","fireball_copy")
+	if not check(not registry.create("Classes","new_class",{}).is_empty(),"unsupported new classes cannot silently enter runtime"): await finish(); return
+	registry.data.npcs.definitions.erase("shop")
+	if not check(registry.validate().any(func(issue): return issue.severity=="ERROR" and issue.section=="Quests"),"NPC deletion validates quest consumer references"): await finish(); return
+	registry.reload()
+	registry.data.quests.definitions.invalid={}
+	if not check(registry.validate().any(func(issue): return issue.severity=="ERROR" and issue.id=="invalid"),"incomplete quest produces validation error without runtime cascade"): await finish(); return
+	registry.data.quests.definitions.erase("invalid")
+	registry.data.assets.definitions.empty_asset={"path":""}
+	registry.record("Items","potion").icon_path="empty_asset"
+	if not check(registry.validate().any(func(issue): return issue.severity=="ERROR" and issue.id=="potion"),"referenced asset requires real file path"): await finish(); return
+	registry.record("Items","potion").erase("icon_path"); registry.data.assets.definitions.erase("empty_asset")
+	registry.record("Items","starter_sword").equipped_visual={"path":"warrior","hframes":0,"vframes":8}
+	if not check(registry.validate().any(func(issue): return issue.severity=="ERROR" and issue.message.contains("Hframes")),"invalid equipped sprite frame division blocks build"): await finish(); return
+	registry.record("Items","starter_sword").erase("equipped_visual")
 	registry.data.economy.drops.spider[0].chance = 1.01
 	if not check(registry.validate().any(func(issue): return issue.severity == "ERROR" and issue.message.contains("porcentaje")),"drop chance greater than100 blocked"):
 		await finish(); return

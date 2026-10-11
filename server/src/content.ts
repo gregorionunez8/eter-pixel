@@ -8,7 +8,7 @@ export function adaptMaps(catalog: any) {
     for(const key of ['regions','labels','obstacles','npcs','portals']) map[key]??=[];
     map.monsters=map.monsters.flatMap((spot:any,index:number)=>{
       if(spot.enabled===false)return [];
-      const entries=spot.entries??[{species:spot.species??'spider',quantity:spot.quantity??1}];
+      const entries=spot.entries?.length?spot.entries:[{species:spot.species??'spider',quantity:spot.quantity??1}];
       const total=entries.reduce((n:number,e:any)=>n+(e.quantity??1),0);
       let sequence=0;
       return entries.flatMap((entry:any)=>Array.from({length:entry.quantity??1},()=>{
@@ -33,7 +33,7 @@ export function applyBalance(name: string,value: any){
  if(name==="monsters"){
   const factors=balance.monster??{};
   for(const config of Object.values(value.species) as any[]){
-   for(const [key,factor] of [["hp","hp"],["attack","damage"],["defense","defense"],["experience","experience"],["respawn","respawn"]])config[key!]*=factors[factor!]??1;
+   for(const [key,factor] of [["hp","hp"],["attack","damage"],["damage_min","damage"],["damage_max","damage"],["defense","defense"],["experience","experience"],["respawn","respawn"]]){if(config[key!]===undefined)continue;config[key!]*=factors[factor!]??1;if(key!=="respawn")config[key!]=Math.floor(config[key!]);}
    config.loot.gold_min=Math.floor(config.loot.gold_min*(factors.gold??1));
    config.loot.gold_max=Math.floor(config.loot.gold_max*(factors.gold??1));
   }
@@ -41,6 +41,7 @@ export function applyBalance(name: string,value: any){
  if(name==="combat"){
   const factors=balance.skill??{};
   for(const skill of Object.values(value.skills) as any[]){
+   if(skill.base_damage!==undefined)skill.base_damage*=(factors.damage??1)*(factors.pve??1);
    if(skill.multiplier!==undefined)skill.multiplier*=(factors.damage??1)*(factors.pve??1);
    skill.mana=Math.floor(skill.mana*(factors.mana??1));
    skill.cooldown*=factors.cooldown??1;

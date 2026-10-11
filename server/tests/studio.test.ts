@@ -10,9 +10,9 @@ test("Studio adapter expands multi-species spots preserving legacy IDs",()=>{
  assert.deepEqual(catalog.maps.test.monsters.slice(1).map((e:any)=>e.id),["test-spot-0","test-spot-1","test-spot-2"]);
 });
 test("Studio balance multipliers alter cloned runtime data, never shared source",()=>{
- const original=balance.monster.hp;balance.monster.hp=2;
- try{const value=applyBalance("monsters",{species:{test:{hp:50,attack:10,defense:2,experience:20,respawn:8,loot:{gold_min:1,gold_max:2}}}});assert.equal(value.species.test.hp,100);}
- finally{balance.monster.hp=original;}
+ const original=balance.monster.hp, damage=balance.monster.damage;balance.monster.hp=2;balance.monster.damage=2;
+ try{const value=applyBalance("monsters",{species:{test:{hp:50,attack:10,damage_min:8,damage_max:12,defense:2,experience:20,respawn:8,loot:{gold_min:1,gold_max:2}}}});assert.equal(value.species.test.hp,100);assert.equal(value.species.test.damage_min,16);assert.equal(value.species.test.damage_max,24);}
+ finally{balance.monster.hp=original;balance.monster.damage=damage;}
 });
 test("Studio safe zone blocks aggro and NPC instances resolve global shops",()=>{
  assert.equal(preventsAggro({zones:[{x:0,y:0,width:96,height:96,monster_aggro_disabled:true}]},{x:50,y:50}),true);

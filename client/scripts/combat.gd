@@ -137,7 +137,7 @@ func cast(skill_id: String) -> bool:
 			return false
 		if skill.mode == "multiple":
 			victims.resize(mini(victims.size(), int(skill.max_targets)))
-	EterAudio.get_manager(get_tree()).play(str(skill.get("audio",{}).get("cast_sound","")),"Combat")
+	EterAudio.get_manager(get_tree()).play(str(skill.get("audio",{}).get("cast_sound","")),"Combat",float(skill.get("audio",{}).get("volume",1)),float(skill.get("audio",{}).get("pitch_variance",0)))
 	App.character.mana -= int(skill.mana)
 	cooldowns[skill_id] = float(skill.cooldown)
 	if skill.mode == "heal":
@@ -147,6 +147,7 @@ func cast(skill_id: String) -> bool:
 		spawn_effect(skill.effect, player.position, player.position, skill.range)
 	for victim in victims:
 		for hit in range(int(skill.get("hits",1))): damage_target(victim, skill.multiplier, skill.damage_type, skill.effect,float(skill.get("base_damage",0)),str(skill.get("scaling_stat","attack")))
+	EterAudio.get_manager(get_tree()).play(str(skill.get("audio",{}).get("impact_sound","")),"Combat")
 	state_changed.emit()
 	return true
 

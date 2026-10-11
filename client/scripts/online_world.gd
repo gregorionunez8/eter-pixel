@@ -113,6 +113,7 @@ func apply_snapshot(data: Dictionary) -> void:
 		actor.dead = state.hp <= 0
 		if actor.remote:
 			actor.weapon_equipped = state.get("weapon_equipped",true)
+			actor.remote_equipment=state.get("equipped_visuals",[])
 			actor.update_equipment_visual()
 			actor.name_label.text = "%s · Nv%s\n%s/%s" % [state.name,int(state.level),int(state.hp),int(state.get("max_hp",state.hp))]
 			actor.name_label.position.y = -65

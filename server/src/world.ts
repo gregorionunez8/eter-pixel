@@ -1,5 +1,6 @@
 import { resetCharacter } from "./rpg.js";
 import { npcDefinitions } from "./content.js";
+import { items } from "./rules.js";
 import type { Character } from "./rules.js";
 import { Navigation, geometry, mapsCatalog, type Point } from "./navigation.js";
 import { Rejected } from "./store.js";
@@ -41,7 +42,7 @@ export class AuthoritativeWorld {
       throw new Rejected("quest_missing");
     const quest = questCatalog.definitions[questId];
     const npc = this.geometryFor(actor.state.map_id).npcs.find(
-      (n: any) => npcShop(n) === quest.npc,
+      (n: any) => (n.npc_id ?? n.id) === quest.npc,
     );
     if (
       actor.state.map_id !== quest.map_id ||
@@ -220,6 +221,11 @@ export class AuthoritativeWorld {
           hp: actor.state.hp,
           max_hp: actor.state.stats.max_hp,
           weapon_equipped: Boolean(actor.state.inventory.equipment.weapon),
+          equipped_visuals: Object.entries(actor.state.inventory.equipment).flatMap(([slot,uid])=>{
+            const item=actor.state.inventory.items.find(i=>i.uid===uid);
+            const visual=item?items.definitions[item.definition].equipped_visual:undefined;
+            return visual?.path?[{...visual,slot}]:[];
+          }),
           position: { ...actor.state.position },
         })),
     };

@@ -50,4 +50,6 @@ static func derive(character: Dictionary) -> Dictionary:
 		var bonuses := EterInventory.bonuses(character.inventory)
 		for stat in bonuses:
 			stats[stat] = float(stats.get(stat,0)) + float(bonuses[stat])
+	for stat in ["max_hp","max_mana","attack","defense","accuracy","evasion"]:
+		if stats.has(stat): stats[stat]=floori(float(stats[stat]))
 	return stats

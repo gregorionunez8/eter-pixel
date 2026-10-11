@@ -5,6 +5,7 @@ import type { AuthoritativeWorld } from "./world.js";
 import { Rejected } from "./store.js";
 import { add, find, remove, refresh } from "./inventory.js";
 import { economyRules } from "./economy.js";
+import { items } from "./rules.js";
 import type { Character } from "./rules.js";
 export const socialRules = JSON.parse(
   readFileSync(resolve("../shared/social.json"), "utf8"),
@@ -210,6 +211,7 @@ export class Social {
       throw new Rejected("invalid_offer");
     const fingerprints = uids.map((uid) => {
       const item = find(state.inventory, uid);
+      if(items.definitions[item.definition].tradeable===false)throw new Rejected("invalid_offer");
       if (Object.values(state.inventory.equipment).includes(uid))
         throw new Rejected("equipped_offer");
       return JSON.stringify(item);

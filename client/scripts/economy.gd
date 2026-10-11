@@ -32,7 +32,7 @@ static func sale_price(item: Dictionary) -> int:
 	if item.is_empty():
 		return 0
 	var definition: Dictionary=EterInventory.definitions().definitions[item.definition]
-	if definition.has("sell_price"): return maxi(0,int(definition.sell_price)*int(item.count))
+	if definition.has("sell_price"): return maxi(0,floori(float(definition.sell_price)*int(item.count)*float(Catalog.read("balance").get("economy",{}).get("sell_multiplier",1))))
 	var maximum := int(definition.durability)
 	var condition := float(item.durability)/maximum if maximum > 0 else 1.0
 	return maxi(1,floori(float(buy_price(item.definition))*float(rules().sell_fraction)*int(item.count)*condition))

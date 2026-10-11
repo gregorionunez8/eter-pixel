@@ -34,13 +34,26 @@ func reload() -> void:
 			errors.append("%s: JSON inválido (%s)" % [name,parser.get_error_message()])
 			continue
 		data[name] = parser.data if not content.is_empty() else {"definitions":{}}
+	for section in SECTIONS:
+		var location: Array=SECTIONS[section]
+		var entries: Variant=data.get(location[0],{}).get(location[1],{})
+		if not entries is Dictionary: errors.append(section+": la colección debe ser un objeto."); continue
+		for id in entries:
+			if not entries[id] is Dictionary: errors.append(section+"/"+str(id)+": registro inválido.")
 	original = data.duplicate(true)
 	changed.emit()
 
 func records(section: String) -> Dictionary:
 	if SECTIONS.has(section):
 		var location: Array = SECTIONS[section]
-		return data.get(location[0],{}).get(location[1],{})
+		var catalog: Variant=data.get(location[0],{})
+		if not catalog is Dictionary: return {}
+		var entries: Variant=catalog.get(location[1],{})
+		if not entries is Dictionary: return {}
+		var result: Dictionary={}
+		for id in entries:
+			if entries[id] is Dictionary: result[id]=entries[id]
+		return result
 	if section in ["Balance","Progression","Reset","Drops","Options"]:
 		var name: String = {"Balance":"balance","Progression":"progression","Reset":"progression","Drops":"economy","Options":"item_options"}[section]
 		return {name:data.get(name,{})}
@@ -64,6 +77,7 @@ func dirty() -> bool:
 	return data != original
 
 func create(section: String,id: String,value: Dictionary) -> String:
+	if section == "Classes": return "Las tres clases actuales se pueden balancear; crear clases nuevas requiere ampliar el runtime."
 	if not valid_id(id): return "ID inválido: usar letras minúsculas, números, _ o -."
 	if records(section).has(id): return "El ID ya existe."
 	if not SECTIONS.has(section): return "Crear esta instancia desde Maps (colocar con mouse)."
@@ -77,6 +91,8 @@ func delete(section: String,id: String) -> void:
 	if SECTIONS.has(section):
 		var location: Array = SECTIONS[section]
 		data[location[0]][location[1]].erase(id)
+		if section=="Monsters": data.economy.drops.erase(id)
+		if section=="Items": data.economy.prices.erase(id)
 	else:
 		var map_id := id.get_slice("/",0)
 		var value := record(section,id)
@@ -100,6 +116,8 @@ func references(section: String,id: String) -> Array[Dictionary]:
 		var quest: Dictionary = records("Quests")[quest_id]
 		for reward in quest.get("reward",{}).get("items",[]):
 			if section == "Items" and reward.definition == id: result.append({"section":"Quests","id":quest_id,"path":"reward"})
+		if section == "NPCs" and quest.get("npc") == id: result.append({"section":"Quests","id":quest_id,"path":"npc"})
+		if section == "Quests" and quest.get("requires") == id: result.append({"section":"Quests","id":quest_id,"path":"requires"})
 		if section == "Monsters" and quest.get("objective",{}).get("species") == id: result.append({"section":"Quests","id":quest_id,"path":"objective"})
 		if section == "Maps" and (quest.get("map_id") == id or id in quest.get("objective",{}).get("maps",[])): result.append({"section":"Quests","id":quest_id,"path":"map"})
 	for map_id in records("Maps"):
@@ -157,29 +175,25 @@ func save_all() -> String:
 		if disk.sha256_text() != fingerprints.get(name,""): return "Conflicto externo en "+name+". Recargar antes de guardar."
 	var written: Array[String] = []
 	var backups: Dictionary = {}
+	var planned: Dictionary = {}
+	var backup_root := root.path_join("artifacts/studio-backup")
+	if DirAccess.make_dir_recursive_absolute(backup_root)!=OK: return "No se pudo crear backup."
+	# Complete every backup before changing any source catalog.
 	for name in CATALOGS:
-		if data[name] == original.get(name): continue
-		var source := source_path(name)
-		backups[name] = FileAccess.get_file_as_string(source) if FileAccess.file_exists(source) else ""
-		var backup_root := root.path_join("artifacts/studio-backup")
-		if DirAccess.make_dir_recursive_absolute(backup_root) != OK: return "No se pudo crear backup."
+		if data[name]==original.get(name): continue
+		backups[name]=FileAccess.get_file_as_string(source_path(name)) if FileAccess.file_exists(source_path(name)) else ""
+		planned[name]=JSON.stringify(data[name],"  ")+"\n"
 		if not backups[name].is_empty():
-			var backup_error := atomic_write(backup_root.path_join(name+".json"),backups[name])
-			if not backup_error.is_empty(): return backup_error
-		var error := atomic_write(source,JSON.stringify(data[name],"  ")+"
-")
+			var error := atomic_write(backup_root.path_join(name+".json"),backups[name])
+			if not error.is_empty(): return error
+	for name in planned:
+		var error := atomic_write(source_path(name),planned[name])
 		if not error.is_empty():
 			for previous in written:
 				if backups[previous].is_empty(): DirAccess.remove_absolute(source_path(previous))
 				else: atomic_write(source_path(previous),backups[previous])
 			return error
 		written.append(name)
-	if not written.is_empty():
-		var backup_root := root.path_join("artifacts/studio-backup")
-		DirAccess.make_dir_recursive_absolute(backup_root)
-		# One bounded snapshot per catalog, ignored by runtime/Git.
-		for name in written:
-			if not backups[name].is_empty(): atomic_write(backup_root.path_join(name+".json"),backups[name])
 	original=data.duplicate(true)
 	for name in CATALOGS:
 		fingerprints[name]=(FileAccess.get_file_as_string(source_path(name)) if FileAccess.file_exists(source_path(name)) else "").sha256_text()
@@ -207,3 +221,22 @@ static func atomic_write(file_path: String,content: String) -> String:
 	file.store_string(content); file.flush(); file.close()
 	if DirAccess.rename_absolute(file_path+".tmp",file_path) != OK: return "No se pudo reemplazar "+file_path
 	return ""
+
+func duplicate_record(section: String,source_id: String,new_id: String) -> String:
+	if record(section,source_id).is_empty(): return "No existe el contenido original."
+	var value := record(section,source_id).duplicate(true)
+	if section=="Maps":
+		value.id=new_id
+		for spawn in value.get("monsters",[]): spawn.id=new_id+"-"+str(spawn.get("id","spawn"))+"-"+str(value.monsters.find(spawn))
+	if section=="Monsters" and not value.has("visual"): value.visual={"path":source_id,"hframes":4,"vframes":1,"scale":1}
+	if section=="Skills":
+		value.book_item_id=""
+		if not value.has("classes"):
+			value.classes=[]
+			for class_id in data.combat.classes:
+				if source_id in data.combat.classes[class_id].skills: value.classes.append(class_id)
+	var error := create(section,new_id,value)
+	if not error.is_empty(): return error
+	if section=="Items" and data.economy.prices.has(source_id): data.economy.prices[new_id]=data.economy.prices[source_id]
+	if section=="Monsters": data.economy.drops[new_id]=data.economy.drops.get(source_id,[]).duplicate(true)
+	touch(); return ""

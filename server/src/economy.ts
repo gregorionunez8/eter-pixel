@@ -194,6 +194,8 @@ export class WorldEconomy {
     const actor = this.actor(id),
       duplicate = this.ground.has(uid);
     if (duplicate) throw new Rejected("invalid_item");
+    const existing=find(actor.state.inventory,uid);
+    if(items.definitions[existing.definition].droppable===false)throw new Rejected("cannot_drop");
     const item = remove(actor.state.inventory, uid);
     this.spawn({ item, position: actor.state.position, owner: id });
     refresh(actor.state);
@@ -215,7 +217,7 @@ export class WorldEconomy {
   }
   salePrice(item: Item) {
     const definition=items.definitions[item.definition];
-    if(definition.sell_price!==undefined)return Math.max(0,Math.floor(definition.sell_price*item.count));
+    if(definition.sell_price!==undefined)return Math.max(0,Math.floor(definition.sell_price*item.count*(balance.economy?.sell_multiplier??1)));
     const maximum = items.definitions[item.definition].durability,
       condition = maximum ? item.durability / maximum : 1;
     return Math.max(

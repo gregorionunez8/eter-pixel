@@ -7,6 +7,8 @@ var path := PackedVector2Array()
 var destination := Vector2.ZERO
 var sprite := Sprite2D.new()
 var equipment_layers: Array[Sprite2D] = []
+var remote_equipment: Array=[]
+var equipment_signature := ""
 var animation_time := 0.0
 var facing := 2
 var frame := 0
@@ -53,20 +55,32 @@ func _ready() -> void:
 func update_equipment_visual() -> void:
 	var definition: Dictionary = EterCharacter.definitions().classes[actor_class if not actor_class.is_empty() else App.class_id]
 	var equipped: bool = weapon_equipped if remote else App.character.inventory.equipment.has("weapon")
-	var suffix := "" if equipped else "_unarmed"
+	var visuals: Array=remote_equipment.duplicate(true) if remote else []
+	if not remote:
+		for slot in App.character.inventory.equipment:
+			var item := EterInventory.find(App.character.inventory,App.character.inventory.equipment[slot])
+			var visual: Dictionary=EterInventory.definitions().definitions[item.definition].get("equipped_visual",{}).duplicate(true)
+			if not str(visual.get("path","")).is_empty(): visual.slot=slot; visuals.append(visual)
+	var custom_weapon: bool=visuals.any(func(visual): return visual.get("slot","")=="weapon")
+	var suffix := "" if equipped and not custom_weapon else "_unarmed"
+	var signature := JSON.stringify([definition.sprite,suffix,visuals])
+	if signature==equipment_signature: return
+	equipment_signature=signature
 	sprite.texture = load("res://assets/%s%s.png" % [definition.sprite,suffix])
 	for layer in equipment_layers: layer.queue_free()
 	equipment_layers.clear()
-	if remote: return
-	for uid in App.character.inventory.equipment.values():
-		var item := EterInventory.find(App.character.inventory,uid)
-		var visual: Dictionary=EterInventory.definitions().definitions[item.definition].get("equipped_visual",{})
+	visuals.sort_custom(func(a,b): return int(a.get("layer",1))<int(b.get("layer",1)))
+	var behind := 0
+	for visual in visuals:
 		if str(visual.get("path","")).is_empty(): continue
 		var layer := Sprite2D.new(); layer.texture=load(EterContent.asset_path(visual.path))
 		layer.hframes=int(visual.get("hframes",1)); layer.vframes=int(visual.get("vframes",1))
 		var offset: Array=visual.get("offset",[0,-18]); layer.position=Vector2(offset[0],offset[1])
 		var dimensions: Array=visual.get("scale",[1,1]); layer.scale=Vector2(dimensions[0],dimensions[1])
-		layer.z_index=int(visual.get("layer",1)); add_child(layer); equipment_layers.append(layer)
+		# Keep equipment inside the actor's y-sort depth; layer is relative ordering.
+		add_child(layer)
+		if int(visual.get("layer",1))<0: move_child(layer,1+behind); behind+=1
+		equipment_layers.append(layer)
 
 func move_to(point: Vector2) -> void:
 	if App.online and not remote:

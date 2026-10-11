@@ -43,6 +43,7 @@ func _shop_id() -> String: return _record_id("Shops")
 func _skill_id() -> String: return _record_id("Skills")
 
 func commit(container: Variant,key: Variant,value: Variant,full_path: String) -> void:
+	if full_path == "requires" and value == "": value=null
 	container[key] = value
 	var parts := full_path.split("/")
 	var cursor: Variant = target
@@ -73,14 +74,17 @@ func choices(key: String,full_path: String) -> Array:
 	if key == "category" and section == "Audio": return ["UI","Player","Movement","Combat","Skills","Monster","NPC","Town","PvP","Ambient","Music","Items","Portals"]
 	if key == "category" and section != "Items": return []
 	if key=="option": return registry.data.item_options.definitions.keys()
-	var references := {"item":"Items","definition":"Items","book_item_id":"Items","learn_skill":"Skills","skill":"Skills","species":"Monsters","npc_id":"NPCs","shop_id":"Shops","target":"Maps","map_id":"Maps","scaling_stat":"Stats"}
+	var references := {"item":"Items","definition":"Items","book_item_id":"Items","learn_skill":"Skills","skill":"Skills","species":"Monsters","npc":"NPCs","requires":"Quests","npc_id":"NPCs","shop_id":"Shops","target":"Maps","map_id":"Maps","scaling_stat":"Stats"}
+	if full_path.begins_with("footsteps/"): return [""]+registry.records("Audio").keys()
 	if key.ends_with("_sound") or key in ["music","ambient_sound","ambient_loop"]: return [""]+registry.records("Audio").keys()
 	if key in references:
 		if references[key] == "Stats": return ["attack","strength","agility","energy","vitality"]
 		return [""]+registry.records(references[key]).keys()
 	if key in ["icon_path","ground_sprite"] or key == "path" and section != "Audio" or key == "visual" and section == "NPCs": return [""]+registry.records("Assets").keys()
 	if key == "terrain": return registry.records("Assets").keys()
+	if full_path.begins_with("objective/maps/"): return registry.records("Maps").keys()
 	if full_path.begins_with("stock/"): return registry.records("Items").keys()
+	if full_path.begins_with("skills/"): return registry.records("Skills").keys()
 	if full_path.begins_with("skill_restrictions/"): return registry.records("Skills").keys()
 	return Schema.ENUMS.get(key,[])
 
@@ -116,6 +120,7 @@ func field(parent: VBoxContainer,container: Variant,key: Variant,value: Variant,
 		if nested is Dictionary:
 			var template: Dictionary = {}
 			if name == "audio":
+				if section in ["Maps","Zones","Audio Zones"]: template.music=""; template.ambient_sound=""
 				for event in ["interaction","greeting","shop_open","quest","reset","pickup","drop","equip","unequip","use","upgrade","repair","idle","aggro","attack","hit","death","cast","travel","impact","loop","enter","arrival","exit"]: template[event+"_sound"] = ""
 			var keys: Array = nested.keys()
 			for child in template:
@@ -123,7 +128,11 @@ func field(parent: VBoxContainer,container: Variant,key: Variant,value: Variant,
 			for child in keys:
 				# Persist a default nested group only when a field is actually edited.
 				var proxy: Dictionary = nested
+				var row_index := body.get_child_count()
 				field(body,proxy,child,nested.get(child,template.get(child)),full_path+"/"+str(child))
+				if nested.has(child) and name in ["options","bonuses","prices","footsteps","buff"]:
+					var remove := Button.new(); remove.text="Quitar"; body.get_child(row_index).add_child(remove)
+					remove.pressed.connect(func(): nested.erase(child); commit(container,key,nested.duplicate(true),full_path); rebuild())
 			var add := Button.new(); add.text = "+ Agregar campo"; row.add_child(add)
 			add.pressed.connect(func(): add_key(container,key,nested,name,full_path))
 		else:

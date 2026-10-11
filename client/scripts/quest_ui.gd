@@ -65,7 +65,7 @@ func refresh() -> void:
 	var selected := listing.get_selected_items()
 	if not selected.is_empty() and selected[0] < ids.size(): previous = ids[selected[0]]
 	listing.clear();ids.clear()
-	title.text = "Diario · Encargos de Éter" if npc_id.is_empty() else EterEconomy.rules().shops[npc_id].name+" · Encargos"
+	title.text = "Diario · Encargos de Éter" if npc_id.is_empty() else str(Catalog.read("npcs").get("definitions",{}).get(npc_id,{}).get("name",npc_id))+" · Encargos"
 	for id in EterQuests.definitions():
 		var quest: Dictionary = EterQuests.definitions()[id]
 		if not npc_id.is_empty() and quest.npc != npc_id: continue

@@ -80,7 +80,9 @@ func save() -> void:
 	else: save_png(filename)
 
 func save_png(file_path: String) -> bool:
-	var local := ProjectSettings.localize_path(file_path)
+	var canonical := ProjectSettings.globalize_path(file_path).simplify_path()
+	var local := ProjectSettings.localize_path(canonical)
+	if local.get_extension().to_lower()!="png": status.text="Guardar un archivo PNG."; return false
 	if not local.begins_with("res://assets/"): status.text="Guardar en res://assets/ para conservar referencias del juego."; return false
 	if canvas.bitmap.save_png(file_path) != OK: status.text="No se pudo guardar PNG."; return false
 	filename=local; dirty=false; update_status(); saved.emit(local); return true

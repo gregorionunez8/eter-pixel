@@ -9,6 +9,7 @@ var tool := "Select / Move"
 var asset := "grass"
 var content_id := ""
 var layer := "Ground"
+var tile_index := 0
 var cache: Dictionary = {}
 var drag_key := ""
 var drag_index := -1
@@ -48,7 +49,7 @@ func paint(point: Vector2) -> void:
 		var tiles: Array=map.layers[layer]
 		for index in range(tiles.size()-1,-1,-1):
 			if int(tiles[index].x)==cell.x and int(tiles[index].y)==cell.y: tiles.remove_at(index)
-		if tool=="Paint": tiles.append({"x":cell.x,"y":cell.y,"texture":asset})
+		if tool=="Paint": tiles.append({"x":cell.x,"y":cell.y,"texture":asset,"tile":tile_index})
 	elif tool in ["Collision","Erase Collision"]:
 		var obstacles: Array=map.obstacles
 		if tool=="Collision":
@@ -99,11 +100,17 @@ func _draw() -> void:
 	var base := texture(str(map.get("terrain","terrain")))
 	if base!=null:
 		for y in range(int(map.height)):
-			for x in range(int(map.width)): draw_texture_rect_region(base,Rect2(Vector2(x,y)*32*zoom,Vector2.ONE*32*zoom),Rect2(0,0,32,32))
+			for x in range(int(map.width)):
+				var tile := 0
+				for region in map.get("regions",[]):
+					if Rect2i(region.x,region.y,region.width,region.height).has_point(Vector2i(x,y)): tile=int(region.tile)
+				draw_texture_rect_region(base,Rect2(Vector2(x,y)*32*zoom,Vector2.ONE*32*zoom),Rect2(tile*32,0,32,32))
 	for layer_name in map.get("layers",{}):
 		for cell in map.layers[layer_name]:
 			var image := texture(str(cell.texture))
-			if image!=null: draw_texture_rect(image,Rect2(Vector2(cell.x,cell.y)*32*zoom,Vector2.ONE*32*zoom),false)
+			if image!=null:
+				var region := Rect2(int(cell.get("tile",0))*32,0,32,32)
+				draw_texture_rect_region(image,Rect2(Vector2(cell.x,cell.y)*32*zoom,Vector2.ONE*32*zoom),region)
 	for obstacle in map.get("obstacles",[]):
 		var area := Rect2(Vector2(obstacle.x,obstacle.y)*32*zoom,Vector2(obstacle.width,obstacle.height)*32*zoom)
 		var image := texture(str(obstacle.texture))

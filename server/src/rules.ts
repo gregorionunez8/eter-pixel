@@ -144,5 +144,6 @@ export function deriveStats(state: {
       stats[rule.stat]=Number(stats[rule.stat]??0)+Number(value);
     }
   }
+  for(const stat of ["max_hp","max_mana","attack","defense","accuracy","evasion"])if(stats[stat]!==undefined)stats[stat]=Math.floor(Number(stats[stat]));
   return stats;
 }

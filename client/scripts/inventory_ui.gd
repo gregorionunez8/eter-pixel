@@ -88,6 +88,7 @@ func activate() -> void:
 		else: App.send_intent("equip",{"uid":item.uid})
 		return
 	var success := false
+	var event := "use" if definition.category in ["potion","skill_book"] else "unequip" if character.inventory.equipment.values().has(item.uid) else "equip"
 	if definition.category == "skill_book": success=EterInventory.learn_book(character,item.uid)
 	elif definition.category == "potion":
 		if character.hp < character.stats.max_hp:
@@ -103,6 +104,7 @@ func activate() -> void:
 	else:
 		success = EterInventory.equip(character,item.uid)
 	if success:
+		EterAudio.get_manager(get_tree()).play(str(definition.get("audio",{}).get(event+"_sound","")),"SFX")
 		notify_changed()
 	else:
 		detail.text = "No se pudo: clase, espacio o vida completa."

@@ -339,7 +339,7 @@ func open_shop(npc: Node2D) -> void:
 	quest_ui.hide()
 	if is_instance_valid(social_ui): social_ui.hide()
 	if npc.definition.get("type","shop")=="reset": open_reset(npc); return
-	if npc.definition.get("type","shop")=="quest": quest_ui.open(npc.shop_id); return
+	if npc.definition.get("type","shop")=="quest": quest_ui.open(npc.npc_id); return
 	if not EterEconomy.rules().shops.has(npc.shop_id):
 		message_label.text=str(npc.definition.get("dialogue","Sin diálogo.")); message_left=3; return
 	audio_manager.play(str(npc.definition.get("audio",{}).get("interaction_sound","")),"Voice")
@@ -359,7 +359,7 @@ func request_quest(operation: String, id: String) -> bool:
 	if player.position.distance_to(active_npc.position) > float(EterEconomy.rules().npc_range) or not combat.line_of_sight(active_npc.position):
 		return false
 	var definition: Dictionary = EterQuests.definitions().get(id,{})
-	if definition.is_empty() or definition.npc != active_npc.shop_id or definition.map_id != map_id:
+	if definition.is_empty() or definition.npc != active_npc.npc_id or definition.map_id != map_id:
 		return false
 	quest_ui.busy = true
 	quest_ui.refresh()
@@ -385,7 +385,7 @@ func transact(operation: String, value: String) -> bool:
 		return false
 	if operation == "quests":
 		shop_ui.hide()
-		quest_ui.open(active_npc.shop_id)
+		quest_ui.open(active_npc.npc_id)
 		return true
 	if App.online:
 		var data := {"definition":value,"shop_id":active_npc.shop_id} if operation == "buy" else {"uid":value,"shop_id":active_npc.shop_id} if operation == "sell" else {"uid":value}
@@ -437,6 +437,8 @@ func spawn_gold(amount: int, point: Vector2) -> void:
 	ground_items.append(ground)
 
 func drop_item(uid: String) -> void:
+	var current := EterInventory.find(App.character.inventory,uid)
+	if current.is_empty() or not EterInventory.definitions().definitions[current.definition].get("droppable",true): return
 	if App.online:
 		App.send_intent("drop",{"uid":uid})
 		return
@@ -445,6 +447,7 @@ func drop_item(uid: String) -> void:
 	var item := EterInventory.remove(App.character.inventory,uid)
 	if not item.is_empty():
 		spawn_ground_item(item,player.position)
+		audio_manager.play(str(EterInventory.definitions().definitions[item.definition].get("audio",{}).get("drop_sound","")),"SFX")
 		inventory_changed()
 		inventory_ui.refresh()
 
@@ -463,6 +466,7 @@ func pickup_item(ground: EterGroundItem) -> bool:
 		message_label.text = "Inventario lleno"
 		message_left = 2
 		return false
+	if not ground.item.is_empty(): audio_manager.play(str(EterInventory.definitions().definitions[ground.item.definition].get("audio",{}).get("pickup_sound","")),"SFX")
 	ground_items.erase(ground)
 	if ground.starter_reward:
 		App.character.starter_ground_claimed = true
@@ -660,6 +664,8 @@ func travel(portal: Node2D) -> void:
 	held = false
 	pending_portal = null
 	changing_map = true
+	audio_manager.play(str(portal.definition.get("audio",{}).get("enter_sound","")),"SFX")
+	audio_manager.play(str(portal.definition.get("audio",{}).get("travel_sound","")),"SFX")
 	if App.online:
 		# App outlives the scene that a successful transition replaces.
 		App.travel_portal(portal.definition.id)
@@ -738,7 +744,7 @@ func _draw() -> void:
 		if layer_name in ["Objects","Decoration Above Player"]: continue
 		for cell in geometry.layers[layer_name]:
 			var image: Texture2D=load(EterContent.asset_path(cell.texture))
-			draw_texture_rect(image,Rect2(float(cell.x)*TILE,float(cell.y)*TILE,TILE,TILE),false)
+			draw_texture_rect_region(image,Rect2(float(cell.x)*TILE,float(cell.y)*TILE,TILE,TILE),Rect2(int(cell.get("tile",0))*TILE,0,TILE,TILE))
 	for entry in geometry.get("labels",[]):
 		draw_string(ThemeDB.fallback_font,Vector2(entry.x,entry.y),entry.text,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("d5aa64"))
 	if marker.x >= 0:
@@ -752,6 +758,8 @@ func sync_skill_buttons() -> void:
 		var button := Button.new()
 		button.position=Vector2(14+(index%4)*144,332-(index/4)*26)
 		button.size=Vector2(140,24); button.add_theme_font_size_override("font_size",10)
+		var icon := str(EterCombatRules.definitions().skills[skill_ids[index]].get("icon_path",""))
+		if not icon.is_empty(): button.icon=load(EterContent.asset_path(icon)); button.add_theme_constant_override("icon_max_width",16)
 		var id: String=skill_ids[index]
 		button.pressed.connect(func(): held=false; combat.cast(id))
 		hud.add_child(button); skill_buttons.append(button)

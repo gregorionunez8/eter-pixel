@@ -42,7 +42,8 @@ func _ready() -> void:
 	sprite.vframes = int(visual.get("vframes",1))
 	sprite.scale=Vector2.ONE*float(visual.get("scale",1))
 	var height := float(sprite.texture.get_height())/sprite.vframes
-	sprite.position = Vector2(0, -height / 2 + 6)
+	var pivot: Array=visual.get("pivot",[0,6])
+	sprite.position = Vector2(float(pivot[0]), -height / 2 + float(pivot[1]))
 	bar.position.y = -height - 3
 	name_label.position = Vector2(-65, -height - 17)
 	name_label.size.x = 130
@@ -146,7 +147,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if velocity.length_squared() > 0.1:
 		animation_time += delta
-		sprite.frame = 1 + int(animation_time * 7) % 3
+		sprite.frame = mini(sprite.hframes*sprite.vframes-1,1 + int(animation_time * 7) % 3)
 		sprite.flip_h = velocity.x < 0
 	else:
 		sprite.frame = 0

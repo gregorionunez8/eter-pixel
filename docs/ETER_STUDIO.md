@@ -1,5 +1,5 @@
 # ÉTER Studio
-Estado: implementación en curso, primer incremento verificable (10/10/2026).
+Estado: primera versión funcional y extensible (10/10/2026). El alcance avanzado pendiente está detallado en cada guía; no se declara cumplido el 100% de la especificación.
 
 Abrir client/project.godot con Godot 4 estable y elegir la pantalla **ÉTER Studio** en la barra superior. Si no aparece: Project > Project Settings > Plugins > ÉTER Studio > Enable.
 
@@ -17,4 +17,4 @@ Validate muestra errores, warnings e información. Click abre el contenido corre
 
 Los datos originales no se reemplazan al abrir. Cambios externos se detectan antes de guardar. Se conserva una copia anterior acotada en artifacts/studio-backup; es local, no se carga en runtime y no se versiona.
 
-Pruebas: tools/test-studio.ps1 (en desarrollo) y tools/test.ps1 para la base del juego.
+Pruebas: tools/test-studio.ps1 -Graphics y tools/test.ps1 para la base del juego.

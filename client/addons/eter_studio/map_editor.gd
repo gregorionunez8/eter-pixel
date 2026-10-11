@@ -11,6 +11,7 @@ var selected_key := ""
 var selected_index := -1
 var choice := OptionButton.new()
 var tools := OptionButton.new()
+var library_filter := OptionButton.new()
 var caption := Label.new()
 func open(store: RefCounted,value: Dictionary) -> void:
 	registry=store; map=value
@@ -18,6 +19,9 @@ func _ready() -> void:
 	var toolbar := HBoxContainer.new(); add_child(toolbar)
 	for mode in ["Select / Move","Paint","Erase Paint","Collision","Erase Collision","Spot","NPC","Portal","Player Spawn","Default Spawn","Safe Zone","PvP Zone","Audio Zone"]: tools.add_item(mode)
 	toolbar.add_child(tools); toolbar.add_child(choice)
+	for category in ["All","Ground","Walls","Nature","Buildings","Interior","Decoration","Special","Custom"]: library_filter.add_item(category)
+	toolbar.add_child(library_filter); library_filter.item_selected.connect(func(_index): update_choices())
+	var tile := SpinBox.new(); tile.min_value=0; tile.max_value=7; tile.prefix="Atlas tile "; toolbar.add_child(tile); tile.value_changed.connect(func(value): canvas.tile_index=int(value))
 	tools.item_selected.connect(func(_index): update_choices())
 	choice.item_selected.connect(func(_index): canvas.asset=choice.get_item_text(choice.selected); canvas.content_id=canvas.asset)
 	var layers := OptionButton.new(); toolbar.add_child(layers)
@@ -39,11 +43,13 @@ func _ready() -> void:
 func update_choices() -> void:
 	canvas.tool=tools.get_item_text(tools.selected); choice.clear()
 	var kind := "Monsters" if canvas.tool=="Spot" else "NPCs" if canvas.tool=="NPC" else "Maps" if canvas.tool=="Portal" else "Assets"
-	for id in registry.records(kind): choice.add_item(id)
+	for id in registry.records(kind):
+		if kind=="Assets" and library_filter.selected>0 and registry.record(kind,id).get("category","Custom")!=library_filter.get_item_text(library_filter.selected): continue
+		choice.add_item(id)
 	if choice.item_count>0: canvas.asset=choice.get_item_text(0); canvas.content_id=canvas.asset
 func select_instance(key: String,index: int) -> void:
 	selected_key=key; selected_index=index
-	instance_form.open(registry,"Spots" if key=="monsters" else "NPCs" if key=="npcs" else "Maps",map[key][index])
+	instance_form.open(registry,{"monsters":"Spots","npcs":"NPC Placements","portals":"Portals","zones":"Zones","player_spawns":"Player Spawns","audio_zones":"Audio Zones"}.get(key,"Maps"),map[key][index])
 	if not instance_form.edited.is_connected(canvas.queue_redraw): instance_form.edited.connect(canvas.queue_redraw)
 func delete_selected() -> void:
 	if selected_index<0: return

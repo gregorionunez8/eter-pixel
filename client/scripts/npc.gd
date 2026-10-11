@@ -10,7 +10,7 @@ func _ready() -> void:
 	var sprite := Sprite2D.new()
 	sprite.texture = load(EterContent.asset_path(str(definition.get("visual","mage_unarmed" if shop_id=="shop" else "warrior_unarmed"))))
 	sprite.region_enabled = true
-	sprite.region_rect = Rect2(0,0,32,48)
+	sprite.region_rect = Rect2(0,clampi(facing,0,7)*48,32,48)
 	sprite.position.y = -20
 	sprite.modulate = Color("d5aa64") if shop_id == "smith" else Color("82bf85")
 	add_child(sprite)

@@ -14,6 +14,8 @@ func _ready() -> void:
 	if not check(map.monsters.size()==before+1 and map.monsters.back().species=="wolf" and canvas.hit(Vector2(320,320)).key=="monsters","spot placement and hit selection"): await finish(); return
 	canvas.tool="NPC"; canvas.content_id="shop"; canvas.place(Vector2(352,320))
 	if not check(map.npcs.back().npc_id=="shop","NPC definition is referenced, not copied"): await finish(); return
+	editor.select_instance("npcs",map.npcs.size()-1)
+	if not check(editor.instance_form.section=="NPC Placements","placed NPC edits instance fields without global/map settings"): await finish(); return
 	canvas.tool="Safe Zone"; canvas.place(Vector2(400,400))
 	if not check(map.zones.back().type=="safe" and map.zones.back().monster_aggro_disabled,"visual safe zone placement"): await finish(); return
 	canvas.tool="Portal"; canvas.content_id="forest"; canvas.place(Vector2(500,500))

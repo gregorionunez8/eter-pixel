@@ -17,11 +17,18 @@ static func defaults(section: String) -> Dictionary:
 	match section:
 		"Items": return {"name":"Nuevo item","description":"","category":"weapon","slot":"weapon","subtype":"","rarity":"normal","required_level":1,"classes":["warrior","mage","elf"],"buy_price":1,"sell_price":0,"tradeable":true,"droppable":true,"storable":true,"stack":1,"durability":100,"size":[1,1],"bonuses":{"attack":0,"defense":0},"icon":0,"icon_path":"","ground_sprite":"","equipped_visual":{"path":"","offset":[0,-18],"scale":[1,1],"layer":1,"hframes":4,"vframes":8,"animation_mapping":{}},"options":{},"audio":{}}
 		"Monsters": return {"name":"Nuevo monstruo","description":"","level":1,"hp":65,"max_mana":1,"attack":12,"damage_min":12,"damage_max":12,"defense":2,"magic_defense":0,"experience":24,"speed":78,"detect_radius":144,"leash_radius":260,"walk_radius":260,"attack_range":28,"attack_interval":1.2,"respawn":6,"radius":7,"accuracy":75,"evasion":4,"loot":{"gold_min":3,"gold_max":8,"chance":0.8},"visual":{"path":"spider","frame_width":32,"frame_height":32,"hframes":4,"vframes":1,"scale":1,"pivot":[0,6],"animation_mapping":{"idle":[0],"walk":[1,2,3],"attack":[0],"hit":[0],"death":[0]}},"audio":{}}
+		"Spots": return {"species":"spider","quantity":1,"walk_radius":144,"spawn_radius":16,"respawn":6,"enabled":true,"entries":[]}
+		"NPC Placements": return array_entry("npcs")
+		"Portals": return array_entry("portals")
+		"Player Spawns": return array_entry("player_spawns")
+		"Zones": return array_entry("zones")
+		"Audio Zones": return array_entry("audio_zones")
 		"Skills": return {"name":"Nuevo poder","description":"","classes":["warrior"],"required_level":1,"icon_path":"","mana":8,"cooldown":3,"cast_time":0,"range":52,"base_damage":0,"multiplier":1.8,"scaling_stat":"attack","hits":1,"max_targets":3,"heal_fraction":0.3,"mode":"single","behavior":"direct_damage","area_radius":52,"projectile_speed":240,"effect_duration":0.2,"effect":"slash","damage_type":"physical","book_item_id":"","buff":{},"audio":{"cast_sound":"","travel_sound":"","impact_sound":"","loop_sound":"","volume":1,"pitch_variance":0},"vfx":{"cast_effect":"","projectile_effect":"","impact_effect":"","area_effect":""}}
 		"NPCs": return {"name":"Nuevo NPC","type":"dialogue","shop_id":"","visual":"warrior_unarmed","facing":2,"interaction_radius":64,"dialogue":"Hola, viajero.","audio":{}}
 		"Shops": return {"name":"Nueva tienda","stock":[],"prices":{},"quantity_rules":{"buy_quantity":1},"buy_enabled":true,"sell_enabled":true,"repair_enabled":false,"upgrade_enabled":false}
-		"Maps": return {"id":"","name":"Nuevo mapa","width":48,"height":32,"tile":32,"spawn":{"x":176,"y":176},"terrain":"terrain","ambient":"ffffff","monsters":[],"npcs":[],"portals":[],"obstacles":[],"layers":{},"zones":[],"player_spawns":[],"audio_zones":[],"pvp_mode":"disabled","recommended_level":1,"music":"","ambient_sound":"","volume":1,"fade_duration":1}
+		"Maps": return {"id":"","name":"Nuevo mapa","width":48,"height":32,"tile":32,"spawn":{"x":176,"y":176},"terrain":"terrain","ambient":"ffffff","ground_color":"405247","path_color":"756f59","regions":[],"labels":[],"monsters":[],"npcs":[],"portals":[],"obstacles":[],"layers":{},"zones":[],"player_spawns":[],"audio_zones":[],"pvp_mode":"disabled","recommended_level":1,"music":"","ambient_sound":"","volume":1,"fade_duration":1}
 		"Progression", "Reset": return {"max_level":100,"experience_base":80,"experience_exponent":1.7,"experience_mode":"formula","experience_table":[],"points_per_level":5,"death_experience_fraction":0.05,"attribute_cap":10000,"reset_enabled":false,"reset_min_level":100}
+		"Quests": return {"name":"Nuevo encargo","npc":"shop","map_id":"village","requires":null,"dialogue":"Derrota los objetivos y vuelve.","completed_dialogue":"Gracias.","objective":{"species":"spider","count":1,"maps":["village"]},"reward":{"experience":24,"gold":0,"items":[]}}
 		"Audio": return {"name":"Nuevo sonido","path":"","category":"SFX","volume":1,"pitch":1,"loop":false}
 		"Assets": return {"name":"Nuevo asset","path":"","category":"Custom","surface":"stone"}
 	return {}
@@ -34,10 +41,14 @@ static func array_entry(key: String) -> Variant:
 		"drops": return {"item":"potion","chance":0.7,"min_quantity":1,"max_quantity":1,"min_upgrade":0,"max_upgrade":0,"possible_options":[],"option_chance":0}
 		"possible_options": return {"option":"critical_chance","value":4}
 		"experience_table": return 80
+		"items": return {"definition":"potion","count":1}
+		"maps": return "village"
+		"idle","walk","attack","hit","death": return 0
+		"skills": return "power_strike"
 		"stock": return "potion"
 		"entries": return {"species":"spider","quantity":1}
 		"player_spawns": return {"id":"spawn_new","x":176,"y":176,"target":"village"}
-		"portals": return {"id":"portal_new","x":176,"y":176,"target":"village","arrival":{"x":176,"y":176},"audio":{}}
+		"portals": return {"name":"Portal","id":"portal_new","x":176,"y":176,"target":"village","arrival":{"x":176,"y":176},"audio":{}}
 		"npcs": return {"id":"npc_new","npc_id":"shop","x":176,"y":176,"facing":2}
 		"monsters": return {"id":"spot_new","species":"spider","x":176,"y":176,"quantity":1,"walk_radius":144,"spawn_radius":0,"respawn":6,"enabled":true}
 		"zones": return {"id":"zone_new","x":176,"y":176,"width":64,"height":64,"shape":"rectangle","pvp_mode":"disabled","monster_aggro_disabled":false,"town":true,"respawn_allowed":true,"skill_restrictions":[],"audio":{}}

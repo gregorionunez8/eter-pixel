@@ -14,9 +14,30 @@ func path_exists(asset: String,visited: Dictionary={}) -> bool:
 	visited=visited.duplicate(); visited[asset]=true
 	if asset.is_empty(): return true
 	if asset.begins_with("res://assets/"): return FileAccess.file_exists(registry.root.path_join("client/"+asset.trim_prefix("res://")))
-	if registry.records("Assets").has(asset): return path_exists(registry.records("Assets")[asset].get("path",""),visited)
-	if registry.records("Audio").has(asset): return path_exists(registry.records("Audio")[asset].get("path",""),visited)
+	if registry.records("Assets").has(asset): return not str(registry.records("Assets")[asset].get("path","")).is_empty() and path_exists(registry.records("Assets")[asset].path,visited)
+	if registry.records("Audio").has(asset): return not str(registry.records("Audio")[asset].get("path","")).is_empty() and path_exists(registry.records("Audio")[asset].path,visited)
 	return false
+
+func media_path(asset: String,visited: Dictionary={}) -> String:
+	if asset.is_empty() or visited.has(asset): return ""
+	visited=visited.duplicate(); visited[asset]=true
+	if asset.begins_with("res://assets/"): return registry.root.path_join("client/"+asset.trim_prefix("res://"))
+	for kind in ["Assets","Audio"]:
+		if registry.records(kind).has(asset): return media_path(str(registry.record(kind,asset).get("path","")),visited)
+	return ""
+
+func visual_valid(visual: Dictionary,section: String,id: String) -> void:
+	if str(visual.get("path","")).is_empty(): return
+	var image := Image.new()
+	var file_path := media_path(str(visual.path))
+	if file_path.is_empty() or not FileAccess.file_exists(file_path) or file_path.get_extension().to_lower()!="png": return
+	if image.load(file_path)!=OK: add("ERROR",section,id,"PNG inválido."); return
+	var columns := int(visual.get("hframes",1)); var rows := int(visual.get("vframes",1))
+	if columns<1 or rows<1 or image.get_width()%maxi(1,columns)!=0 or image.get_height()%maxi(1,rows)!=0: add("ERROR",section,id,"Hoja incompatible con Hframes/Vframes.")
+	for frames in visual.get("animation_mapping",{}).values():
+		if not frames is Array: add("ERROR",section,id,"Mapping de animación debe ser lista de frames."); continue
+		for frame in frames:
+			if not number(frame) or int(frame)<0 or int(frame)>=columns*rows: add("ERROR",section,id,"Frame de animación fuera de la hoja.")
 
 func scan(value: Variant,section: String,id: String,key: String = "",percent_options: bool = false) -> void:
 	if value is Dictionary:
@@ -25,10 +46,15 @@ func scan(value: Variant,section: String,id: String,key: String = "",percent_opt
 		for child in value: scan(child,section,id,key,percent_options)
 	elif number(value):
 		if key in ["chance","option_chance","critical_chance"] and (value < 0 or value > (100 if percent_options else 1)): add("ERROR",section,id,key+": el porcentaje debe estar entre 0 y 100.")
+		if key=="facing" and (value<0 or value>7 or value!=floor(value)): add("ERROR",section,id,"Facing requiere dirección entera0–7.")
+		if key in ["hframes","vframes","stack","quantity","hits"] and (value<1 or value!=floor(value)): add("ERROR",section,id,key+": requiere entero positivo.")
 		if key in ["hp","max_hp","max_mana","level","stack","width","height","quantity","radius","attack_interval","respawn"] and value <= 0: add("ERROR",section,id,key+": debe ser mayor que cero.")
 		if key in ["mana","cooldown","attack","defense","experience","speed","gold_min","gold_max","required_level"] and value < 0: add("ERROR",section,id,key+": no puede ser negativo.")
 	elif value is String:
-		if (key.ends_with("_path") or key in ["path","visual","icon_path","ground_sprite","equipped_sprite"]) and not path_exists(value): add("ERROR",section,id,"Asset inexistente o fuera de res://assets/: "+value)
+		if (key.ends_with("_path") or key in ["path","visual","icon_path","ground_sprite","equipped_sprite","texture"]) and not path_exists(value): add("ERROR",section,id,"Asset inexistente o fuera de res://assets/: "+value)
+		if not value.is_empty() and key in ["path","visual","icon_path","ground_sprite","equipped_sprite","texture"]:
+			var file_path := media_path(value)
+			if not file_path.is_empty() and file_path.get_extension().to_lower() not in (["wav","ogg"] if section=="Audio" else ["png"]): add("ERROR",section,id,"Formato de media incompatible: "+value)
 		if key.ends_with("_sound") or key in ["music","ambient_sound","ambient_loop"]:
 			if not value.is_empty() and not registry.records("Audio").has(value): add("ERROR",section,id,"Audio inexistente: "+value)
 
@@ -44,6 +70,8 @@ func run(source: RefCounted) -> Array[Dictionary]:
 			if not source.valid_id(id): add("ERROR",section,id,"ID interno inválido.")
 			var entry: Variant = source.records(section)[id]
 			if not entry is Dictionary: add("ERROR",section,id,"Registro inválido."); continue
+			for visual_key in ["visual","equipped_visual"]:
+				if entry.get(visual_key) is Dictionary: visual_valid(entry[visual_key],section,id)
 			scan(entry,section,id)
 			for class_id in entry.get("classes",[]):
 				if not source.records("Classes").has(class_id): add("ERROR",section,id,"Clase inexistente: "+str(class_id))
@@ -86,7 +114,7 @@ func run(source: RefCounted) -> Array[Dictionary]:
 	if not maps.has("village"): add("ERROR","Maps","village","Aldea es el mapa inicial requerido por el juego actual.")
 	for map_id in maps:
 		var map: Dictionary = maps[map_id]
-		if not map.has_all(["width","height","tile","spawn","terrain","monsters","npcs","portals","obstacles"]): add("ERROR","Maps",map_id,"Faltan datos obligatorios del mapa."); continue
+		if not map.has_all(["name","ambient","ground_color","path_color","width","height","tile","spawn","terrain","monsters","npcs","portals","obstacles"]): add("ERROR","Maps",map_id,"Faltan datos obligatorios del mapa."); continue
 		if int(map.tile) != 32: add("ERROR","Maps",map_id,"La escala actual requiere tiles de32px.")
 		if not bounded(map,map.spawn): add("ERROR","Maps",map_id,"Player Spawn fuera del mapa.")
 		if not path_exists(str(map.terrain)) and not path_exists("res://assets/"+map.terrain+".png"): add("ERROR","Maps",map_id,"Base tile inexistente.")
@@ -100,9 +128,17 @@ func run(source: RefCounted) -> Array[Dictionary]:
 				if group=="monsters" and (not preload("res://scripts/inventory.gd").integer(entry.get("quantity",1)) or int(entry.get("quantity",1))>64): add("ERROR","Maps",map_id,"Spot requiere cantidad entera entre 1 y64.")
 				if not bounded(map,entry): add("ERROR","Maps",map_id,group+" fuera del mapa: "+id)
 				if group == "monsters":
-					for spawn in entry.get("entries",[{"species":entry.get("species","")}]):
+					var entries: Array=entry.get("entries",[])
+					if entries.is_empty(): entries=[{"species":entry.get("species",""),"quantity":entry.get("quantity",1)}]
+					var total := 0
+					for spawn in entries:
+						if not spawn is Dictionary: add("ERROR","Maps",map_id,"Entry de spot inválida."); continue
+						var quantity: Variant=spawn.get("quantity",1)
+						if not preload("res://scripts/inventory.gd").integer(quantity) or int(quantity)<1: add("ERROR","Maps",map_id,"Cantidad de entry debe ser entera y positiva.")
+						total+=int(quantity)
 						if not source.records("Monsters").has(spawn.get("species","")): add("ERROR","Maps",map_id,"Spot referencia un monstruo inexistente.")
-				if group == "npcs" and not source.records("NPCs").is_empty() and not source.records("NPCs").has(entry.get("npc_id",entry.id)): add("ERROR","Maps",map_id,"NPC inexistente: "+id)
+					if total>64: add("ERROR","Maps",map_id,"Spot excede64 monstruos.")
+				if group == "npcs" and not source.records("NPCs").has(entry.get("npc_id",entry.id)): add("ERROR","Maps",map_id,"NPC inexistente: "+id)
 				if group == "portals":
 					if not maps.has(entry.get("target","")): add("ERROR","Maps",map_id,"Portal sin destino válido: "+id)
 					elif not bounded(maps[entry.target],entry.get("arrival",{})): add("ERROR","Maps",map_id,"Llegada de portal fuera del destino.")
@@ -114,12 +150,20 @@ func run(source: RefCounted) -> Array[Dictionary]:
 	for class_id in source.data.get("combat",{}).get("classes",{}):
 		for id in source.data.combat.classes[class_id].get("skills",[]):
 			if not source.records("Skills").has(id): add("ERROR","Classes",class_id,"Poder inexistente: "+str(id))
+	for id in source.records("Audio"):
+		if str(source.record("Audio",id).get("path","")).is_empty(): add("ERROR","Audio",id,"Importar WAV/OGG antes de construir.")
 	for id in source.records("Skills"):
 		var skill: Dictionary = source.records("Skills")[id]
 		if not skill.get("book_item_id","").is_empty() and (not items.has(skill.book_item_id) or items[skill.book_item_id].get("learn_skill","") != id): add("ERROR","Skills",id,"Libro de aprendizaje incompatible.")
+		if float(skill.get("cast_time",0))>0 or not skill.get("vfx",{}).values().all(func(value): return str(value).is_empty()): add("WARNING","Skills",id,"Cast Time y VFX externos están preparados; este runtime utiliza efectos existentes.")
 		if skill.get("mode","single") in ["buff","debuff","directional"]: add("ERROR","Skills",id,"Comportamiento aún no disponible en runtime: usar single, area, multiple o heal.")
+	for class_id in ["warrior","mage","elf"]:
+		if not source.records("Classes").has(class_id): add("ERROR","Classes",class_id,"Clase inicial requerida: no borrar.")
 	for id in source.records("Quests"):
 		var quest: Dictionary = source.records("Quests")[id]
+		if not quest.has_all(["name","npc","map_id","requires","dialogue","completed_dialogue","objective","reward"]) or not quest.get("objective",{}) is Dictionary or not quest.get("reward",{}) is Dictionary or not quest.get("objective",{}).has_all(["species","count","maps"]) or not quest.get("reward",{}).has_all(["experience","gold","items"]): add("ERROR","Quests",id,"Encargo incompleto: faltan objetivo, NPC o recompensa."); continue
+		if not source.records("NPCs").has(quest.npc): add("ERROR","Quests",id,"NPC de entrega inexistente.")
+		if quest.requires != null and not source.records("Quests").has(quest.requires): add("ERROR","Quests",id,"Prerequisito inexistente.")
 		if not source.records("Monsters").has(quest.objective.species): add("ERROR","Quests",id,"Objetivo referencia monstruo inexistente.")
 		if not maps.has(quest.map_id): add("ERROR","Quests",id,"Mapa de quest inexistente.")
 		for reward in quest.reward.items:

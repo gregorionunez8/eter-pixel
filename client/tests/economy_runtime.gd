@@ -94,8 +94,10 @@ func _ready() -> void:
 		return
 	var monster: EterMonster = world.targets[3]
 	var ground_count: int = world.ground_items.size()
-	world.combat.damage_target(monster,1000,"physical","slash")
-	if not monster.dead: world.combat.damage_target(monster,1000,"physical","slash")
+	# Accuracy is probabilistic: exercise real hits with a bounded retry, rather than assume two guaranteed hits.
+	for attempt in range(32):
+		if monster.dead: break
+		world.combat.damage_target(monster,1000,"physical","slash")
 	if not check(monster.dead,"real monster kill"):
 		await finish()
 		return

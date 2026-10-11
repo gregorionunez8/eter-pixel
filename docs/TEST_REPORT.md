@@ -110,3 +110,19 @@ Evidencia real: import de plugin sin parse errors; Studio registry 12 checks, UI
 
 ## ÉTER Studio — segundo hito verificado
 tools/test-studio.ps1 -Graphics: registry13, UI5, assets8, maps9, runtime8 PASS (último runtime incluye Reset). tools/test.ps1 -Graphics PASS completo: foundation, movement544, classes33, combat209, monsters1376, progression138, inventory83, economy407, maps73, quests87 headless/90 gráficos, reload5, input9, inventory runtime22, economy runtime17, UI18, save reload. tools/test-server.ps1:88/88 y startup WS/PostgreSQL real PASS. Fallos corregidos: arguments de PowerShell, montaje Audio Manager, callbacks de parse y bindings después de guardar.
+## ÉTER Studio — verificación final local, 10/10/2026
+- tools/test-studio.ps1 -Graphics exit0: registry21, UI5, assets9, maps10, runtime20 (65 checks). Import/plugin sin parse errors. UI/Maps/Test Room usan OpenGL real.
+- Registry: original13 items/6 monstruos/6 skills/3 mapas/2 NPCs; CRUD, duplicados, referencias, dirty, Save seguido de edición sobre binding vivo, SHA conflicto externo, Build en fixture, borrado con referencias bloqueado, duplicación de drops/visual/clases, clases nuevas rechazadas, quest incompleta sin cascadas y visual equipado inválido.
+- Pixel canvas: pencil/erase/fill/undo/redo/mirror/resize y PNG roundtrip. Save As real dentro de client/assets con nombre único, luego se elimina sólo ese archivo de fixture; rutas fuera rechazadas.
+- Maps: pintura/borrado/colocación/hit, NPC usa referencia global, formulario de instancia correcto, safe zone, portal con arrival y tres mapas legacy.
+- Runtime Studio: opciones configurables, libro aprende una vez/no consume repetido, save/load por archivo de fixture, reset, bus/volumen Master con WAV sintético, cast/icono real, capa local/remota, portal Test Room conserva cooldown, mapa/monster/equipment nuevos desde Schema funcionan. No hay nuevo contenido persistido en catálogos originales.
+- tools/test.ps1 -Graphics exit0 final: foundation; movement544; characters33; combat209; monsters1376; progression138; inventory83; economy407; maps73; quests87 headless/90 gráficos; quest reload5; input9; inventory runtime22; economy runtime17; UI18; save reload en proceso nuevo.
+- tools/test-server.ps1 exit0:88/88, TypeScript build y startup/shutdown con PostgreSQL18.4 y WebSocket reales.
+- Fallos encontrados y corregidos antes de dar éxito: título de Encargos usaba Catalog.data inexistente (ahora Catalog.read); test de economía suponía dos hits garantizados y podía fallar por accuracy (ahora hasta32 ataques reales acotados); mapa nuevo omitía ground_color/path_color usados por minimapa (plantilla y validator completos). Un PASS seguido de SCRIPT ERROR fue rechazado por el wrapper y no se contó como éxito.
+- QA visual: studio-infrastructure.png y studio-test-room.png inspeccionadas. Pruebas de formularios/colocación son automatizadas y no sustituyen sesión manual extensa del diseñador. No se acreditan audio final audible, cientos de assets ni todas las variantes avanzadas.
+
+### Online y cierre de verificación
+- tools/test-online-world.ps1 -Graphics exit0: role0=78, role1=66,144 checks; dos procesos Godot reales, render, juego autoritativo y reconexión SQL.
+- tools/test-online-quests.ps1 -Graphics exit0:134 checks;3 arañas,2 lobos en forest,1 Guardián en crypt, entrega/recompensa única y reconexión SQL; tiendas existentes siguen funcionando. Son pruebas del contenido original, no una prueba de todos los tipos nuevos editados en una sesión online.
+- Último ajuste aislado: Map Test usa el spawn elegido en el mapa, NPC facing selecciona fila de sprite. Studio runtime20 PASS y economy-runtime-final17 PASS posteriores; sin errores del motor.
+- Catálogos originales y PNG originales: git diff contra6551450 sin cambios. Plugin y los5 nuevos catálogos opcionales no reemplazan contenido existente. Artefactos/DB/backups ignorados.

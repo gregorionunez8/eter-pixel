@@ -18,6 +18,11 @@ func _ready() -> void:
 	if not check(canvas.bitmap.get_pixel(13,3).a==0,"eraser clears alpha"): await finish(); return
 	var file_path := "res://../artifacts/studio-pixels.png"
 	if not check(canvas.bitmap.save_png(file_path)==OK and editor.open_png(file_path),"PNG round trip without modifying source art"): await finish(); return
+	var controlled := "res://assets/studio-acceptance-"+Crypto.new().generate_random_bytes(8).hex_encode()+".png"
+	var wrote: bool=editor.save_png(controlled)
+	var exists := FileAccess.file_exists(controlled)
+	if exists: DirAccess.remove_absolute(ProjectSettings.globalize_path(controlled))
+	if not check(wrote and exists,"asset editor saves an actual controlled PNG and cleans only its unique test file"): await finish(); return
 	if not check(not editor.save_png("user://outside.png"),"save rejects paths outside controlled assets"): await finish(); return
 	print("PASS Studio assets: %d checks, pixel operations and PNG round trip" % checks)
 	await finish()

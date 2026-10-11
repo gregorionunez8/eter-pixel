@@ -76,3 +76,9 @@ Plugin Main Screen, registry sobre shared, formularios CRUD, búsqueda/referenci
 
 ## ÉTER Studio — segundo hito verificado
 Adapters compartidos GS/TS para spots, capas de mapa, item visuals/options, skills aprendibles, economía configurable, balance y reset. Audio Manager y sala Test Content aislada. No se reemplazó contenido original ni backend. Goal sigue activo: cerrar herramientas/previews/validación y pruebas online.
+## ÉTER Studio — primera versión funcional entregable
+10/10/2026. Navegación, formularios, pixel canvas, mapas/spots, NPC/shops, skills/libros, balance/audio, validación/build y sala de pruebas integrados sobre la base existente. Los13 items,6 monstruos,6 skills,2 NPCs y3 mapas originales aparecen en Studio; no se alteraron sus catálogos ni arte.
+Tercer hito: guardado conserva bindings, backups preceden escrituras, duplicación conserva referencias visuales/drop/clases, multi entries y atlas/library, Equipment local/remoto con descriptors públicos/cache, opciones numéricas y paridad de multiplicadores GS/TS, restricciones droppable/tradeable, reset/libros persistentes, claridad de campos preparados, plantilla de mapa completa y portales/spawn correctos de Test Room.
+Evidencia final: Studio65; regresión local completa gráfica PASS; backend88/88 más startup real; dos mundos online144 y aventura de quests134 PASS. Economy runtime17 volvió a pasar tras último ajuste de facing. Fallos encontrados y corregidos se registran en TEST_REPORT.
+Guías: DESIGNER_START_HERE, ETER_STUDIO, ITEM/ASSET/MAP/MONSTER/SPOT/SKILL/BALANCE/AUDIO_EDITOR, CONTENT_VALIDATION y ETER_STUDIO_DELIVERY. La versión avanzada solicitada queda parcial en skills modulares/zonas/PvP/audio/timeline; se declara explícitamente. No es un MMORPG terminado.
+Hitos locales de Studio ya registrados: ddecd87 y1a25466; cierre de compatibilidad/QA/documentación en tercer commit. Sin push. Se conserva el cambio anterior no incluido en client/project.godot.

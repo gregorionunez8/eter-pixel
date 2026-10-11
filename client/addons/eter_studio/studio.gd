@@ -105,8 +105,11 @@ func select_record(id: String) -> void:
 func open_record(id: String) -> void:
 	selected_id = id; clear_body()
 	var heading := Label.new(); heading.text = section+" · "+id+" (ID estable)"; body.add_child(heading)
+	var notes: Dictionary={"Skills":"Runtime: single/area/multiple/heal. Cast Time y VFX externos preparados; BUFF/DEBUFF/DIRECTIONAL bloquean Build.","Monsters":"Runtime: HP/daño/AI, hoja y mapping. Max MP/Magic Defense y hit visual preparados.","Zones":"Rectángulos y aggro disabled activos. PvP/skill restrictions/respawn policies preparados."}
+	if notes.has(section):
+		var note := Label.new(); note.text=notes[section]; note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; body.add_child(note)
 	if section in ["Items","Monsters","Skills","NPCs"]: add_previews(id)
-	if section in ["Items","Monsters","Skills","NPCs","Maps"]:
+	if section in ["Items","Monsters","Skills","NPCs","Maps","Spots"]:
 		var test := Button.new(); test.text="TEST · "+section; body.add_child(test); test.disabled=editor_plugin==null; test.pressed.connect(func(): test_content(section,id))
 	form = Form.new(); body.add_child(form); form.open(registry,section,registry.record(section,id))
 	form.asset_requested.connect(import_audio if section=="Audio" else open_asset)
@@ -119,19 +122,32 @@ func open_record(id: String) -> void:
 		if not registry.data.economy.drops.has(id): registry.data.economy.drops[id] = []
 		drops_form.open(registry,"Drops",{"drops":registry.data.economy.drops[id]})
 		drops_form.edited.connect(func(): registry.data.economy.drops[id] = drops_form.target.drops)
+		var multiplier := float(registry.data.balance.get("monster",{}).get("drop_rate",1))
+		for drop in registry.data.economy.drops[id]:
+			var summary := Label.new(); summary.text="%s · base %.4f%% · efectiva %.4f%% (%sx)" % [str(registry.record("Items",str(drop.get("item",""))).get("name",drop.get("item",""))),float(drop.get("chance",0))*100,minf(1,float(drop.get("chance",0))*multiplier)*100,str(multiplier)]; body.add_child(summary)
 		var sort_drops := Button.new(); sort_drops.text="Ordenar drops por chance"; body.add_child(sort_drops)
 		sort_drops.pressed.connect(func(): registry.data.economy.drops[id].sort_custom(func(a,b): return a.chance>b.chance); registry.touch(); open_record(id))
 	if section == "Items": add_upgrade_preview(id)
+	if section == "Classes" and registry.data.combat.classes.has(id):
+		var attack_label := Label.new(); attack_label.text="Attack Range / Interval / Skills"; body.add_child(attack_label)
+		var class_form := Form.new(); body.add_child(class_form); class_form.open(registry,"Classes",registry.data.combat.classes[id])
 	if section == "Balance": add_balance_panels()
 	if section == "Progression": add_experience_table()
 	if section == "Audio":
+		var settings_form := Form.new(); body.add_child(settings_form)
+		settings_form.open(registry,"Audio",{"footsteps":registry.data.audio.footsteps})
+		settings_form.edited.connect(func(): registry.data.audio.footsteps=settings_form.target.footsteps)
 		var audio_controls := HBoxContainer.new(); body.add_child(audio_controls)
 		var preview := AudioStreamPlayer.new(); body.add_child(preview)
 		var play := Button.new(); play.text="Play"; audio_controls.add_child(play)
 		play.pressed.connect(func():
 			var audio: Dictionary=registry.record("Audio",id)
 			if str(audio.get("path","")).is_empty(): message("Importar audio primero."); return
-			preview.stream=load(audio.path); preview.volume_db=linear_to_db(maxf(0.0001,float(audio.get("volume",1)))); preview.pitch_scale=float(audio.get("pitch",1)); preview.play())
+			preview.stream=load(audio.path).duplicate()
+			if preview.stream is AudioStreamWAV: preview.stream.loop_mode=AudioStreamWAV.LOOP_FORWARD if audio.get("loop",false) else AudioStreamWAV.LOOP_DISABLED
+			elif preview.stream is AudioStreamOggVorbis: preview.stream.loop=audio.get("loop",false)
+			preview.stream_paused=false; preview.volume_db=linear_to_db(maxf(0.0001,float(audio.get("volume",1)))); preview.pitch_scale=float(audio.get("pitch",1)); preview.play())
+		var pause := Button.new(); pause.text="Pause / Resume"; audio_controls.add_child(pause); pause.pressed.connect(func(): preview.stream_paused=not preview.stream_paused)
 		var stop := Button.new(); stop.text="Stop"; audio_controls.add_child(stop); stop.pressed.connect(preview.stop)
 	if section == "Maps":
 		var map_editor := preload("map_editor.gd").new(); map_editor.open(registry,registry.record("Maps",id)); body.add_child(map_editor)
@@ -146,7 +162,7 @@ func create_dialog(duplicate: bool) -> void:
 	dialog.confirmed.connect(func():
 		var value: Dictionary = registry.record(section,selected_id).duplicate(true) if duplicate else Schema.defaults(section)
 		if section == "Maps": value.id = input.text
-		var error: String = registry.create(section,input.text,value)
+		var error: String = registry.duplicate_record(section,selected_id,input.text) if duplicate else registry.create(section,input.text,value)
 		if not error.is_empty(): message(error)
 		else: open_record(input.text)
 		dialog.queue_free())
@@ -237,9 +253,8 @@ func show_test_tools() -> void:
 	var label := Label.new(); label.text="Test Content usa el runtime actual. Guardar y construir antes de ejecutar."; body.add_child(label)
 	var run := Button.new(); run.text="Play · juego existente"; body.add_child(run)
 	run.disabled=editor_plugin==null
-	run.pressed.connect(func():
-		if not registry.build().is_empty(): show_validation(); return
-		editor_plugin.get_editor_interface().play_main_scene())
+	run.text="Open isolated Test Room"
+	run.pressed.connect(func(): test_content("Maps","village"))
 
 func import_audio(_current: String,setter: Callable) -> void:
 	var dialog := FileDialog.new(); dialog.access=FileDialog.ACCESS_FILESYSTEM; dialog.file_mode=FileDialog.FILE_MODE_OPEN_FILE
@@ -296,14 +311,14 @@ func add_previews(id: String) -> void:
 func test_content(kind: String,id: String) -> void:
 	var failure: String=registry.build()
 	if not failure.is_empty(): message(failure); return
-	var map_id := id if kind=="Maps" else "village"
+	var map_id := id if kind=="Maps" else id.get_slice("/",0) if kind=="Spots" else "village"
 	var request := {"section":kind,"id":id,"map_id":map_id,"class_id":"warrior"}
 	var error: String=registry.atomic_write(registry.root.path_join("artifacts/studio-test.json"),JSON.stringify(request))
 	if not error.is_empty(): message(error); return
 	if editor_plugin!=null: editor_plugin.get_editor_interface().play_custom_scene("res://scenes/studio_test_room.tscn")
 
 func add_balance_panels() -> void:
-	for entry in [["Item Upgrade",registry.data.items.upgrade],["Economy",registry.data.economy],["Progression / Reset",registry.data.progression]]:
+	for entry in [["Player Stat Formulas (shared)",registry.data.classes.derived],["Item Upgrade",registry.data.items.upgrade],["Economy",registry.data.economy],["Progression / Reset",registry.data.progression]]:
 		var label := Label.new(); label.text=entry[0]; body.add_child(label)
 		var balance_form := Form.new(); body.add_child(balance_form)
 		var target: Dictionary=entry[1]

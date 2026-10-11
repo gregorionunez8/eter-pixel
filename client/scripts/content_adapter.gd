@@ -14,7 +14,8 @@ static func maps(catalog: Dictionary) -> Dictionary:
 		for index in range(map.monsters.size()):
 			var spot: Dictionary=map.monsters[index]
 			if not spot.get("enabled",true): continue
-			var entries: Array=spot.get("entries",[{"species":spot.get("species","spider"),"quantity":spot.get("quantity",1)}])
+			var entries: Array=spot.get("entries",[])
+			if entries.is_empty(): entries=[{"species":spot.get("species","spider"),"quantity":spot.get("quantity",1)}]
 			var sequence := 0
 			var total := 0
 			for entry in entries: total+=int(entry.get("quantity",1))
@@ -43,13 +44,16 @@ static func apply_balance(name: String,value: Dictionary) -> Dictionary:
 	if name=="monsters":
 		var factors: Dictionary=balance.get("monster",{})
 		for config in value.species.values():
-			for pair in [["hp","hp"],["attack","damage"],["defense","defense"],["experience","experience"],["respawn","respawn"]]:
+			for pair in [["hp","hp"],["attack","damage"],["damage_min","damage"],["damage_max","damage"],["defense","defense"],["experience","experience"],["respawn","respawn"]]:
+				if not config.has(pair[0]): continue
 				config[pair[0]]=float(config[pair[0]])*float(factors.get(pair[1],1))
+				if pair[0]!="respawn": config[pair[0]]=floori(float(config[pair[0]]))
 			config.loot.gold_min=floori(float(config.loot.gold_min)*float(factors.get("gold",1)))
 			config.loot.gold_max=floori(float(config.loot.gold_max)*float(factors.get("gold",1)))
 	if name=="combat":
 		var factors: Dictionary=balance.get("skill",{})
 		for skill in value.skills.values():
+			if skill.has("base_damage"): skill.base_damage=float(skill.base_damage)*float(factors.get("damage",1))*float(factors.get("pve",1))
 			if skill.has("multiplier"): skill.multiplier=float(skill.multiplier)*float(factors.get("damage",1))*float(factors.get("pve",1))
 			skill.mana=floori(float(skill.mana)*float(factors.get("mana",1)))
 			skill.cooldown=float(skill.cooldown)*float(factors.get("cooldown",1))
